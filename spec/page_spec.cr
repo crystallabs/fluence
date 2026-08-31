@@ -11,7 +11,7 @@ describe Fluence::Page do
   it "derives title, toc, and intlinks from content" do
     with_each_storage do |storage, kind|
       page = Fluence::Page.new("guide")
-      page.update! SPEC_USER, "# The Guide\n## Part One\nSee [[other]].\n"
+      page.update! SPEC_USER, "# The Guide\n## Part One\nSee [other](other).\n"
       page.title.should eq "The Guide"
       page.toc.should eq [{1, "The Guide"}, {2, "Part One"}]
       page.intlinks.size.should eq 1

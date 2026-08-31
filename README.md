@@ -57,6 +57,8 @@ There are no files or directories required to pre-exist for Fluence to work. The
 
 There is no index or cache: listings, titles, internal-link resolution, and search always operate on the current repository contents, so nothing can go out of sync. (The `meta/pages` and `meta/media` index files written by Fluence <= 0.6 are no longer used and can be deleted.)
 
+Page content is GitHub Flavored Markdown (tables, strikethrough, autolinks, emoji). Links between pages are ordinary markdown links — `[Title](/pages/name)`, or a target relative to the current page such as `[Title](sibling)`. The `[[wikilink]]` syntax of earlier versions is no longer interpreted; to convert existing content once, start Fluence with `FLUENCE_MIGRATE_WIKILINKS=1` — it rewrites all affected pages to standard links, commits them, and exits.
+
 
 
 ## Current State / Usability

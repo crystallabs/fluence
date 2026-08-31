@@ -52,7 +52,7 @@ describe Fluence::Catalog do
 
   it "renames pages and rewrites internal links" do
     with_each_storage do |storage, kind|
-      Fluence::Page.new("a").update! SPEC_USER, "# A\nSee [[b]] and [[b|Custom]]. Not [[bb]]."
+      Fluence::Page.new("a").update! SPEC_USER, "# A\nSee [b](b) and [Custom](/pages/b). Not [bb](bb)."
       b = Fluence::Page.new("b").update! SPEC_USER, "# B\n"
 
       b.rename! SPEC_USER, "c", intlinks: true
@@ -60,7 +60,7 @@ describe Fluence::Catalog do
       b.exists?.should be_true
 
       Fluence::Page.new("b").exists?.should be_false
-      Fluence::Page.new("a").read.should eq "# A\nSee [[c]] and [[c|Custom]]. Not [[bb]]."
+      Fluence::Page.new("a").read.should eq "# A\nSee [b](/pages/c) and [Custom](/pages/c). Not [bb](bb)."
     end
   end
 

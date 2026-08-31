@@ -13,7 +13,8 @@ require "../src/catalog"
 require "../src/acl"
 require "../src/page"
 require "../src/media"
-require "../src/wikimd/**"
+require "../src/markdown"
+require "../src/wikilink_migration"
 require "../src/users/**"
 
 # The catalogs normally defined by src/fluence.cr, which specs do not load.

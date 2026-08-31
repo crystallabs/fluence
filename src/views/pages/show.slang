@@ -57,9 +57,13 @@
     .col-sm-8
       .row
         .col-12
-          form#edit-page method="post"
-            fieldset
-              textarea.form-control name="body" = body
+          - if writable
+            form#edit-page method="post"
+              fieldset
+                textarea.form-control name="body" = body
+          - else
+            #page-body
+              == body_html
         .col-6
           span New Attachment
             - if writable
@@ -215,8 +219,11 @@
                 .col
                   = groups_write.join ", "
 script
-  = "var editor = new EasyMDE(Fluence.mde_options(#{writable}));"
-  - if writable && ((!page.exists? && Fluence::OPTIONS.open_new_in_edit) || (page.exists? && (page.size==0) && Fluence::OPTIONS.open_empty_in_edit) || Fluence::OPTIONS.open_in_edit)
-    = "editor.codemirror.focus();"
+  - if writable
+    = "var editor = new EasyMDE(Fluence.mde_options(true));"
+    - if (!page.exists? && Fluence::OPTIONS.open_new_in_edit) || (page.exists? && (page.size==0) && Fluence::OPTIONS.open_empty_in_edit) || Fluence::OPTIONS.open_in_edit
+      = "editor.codemirror.focus();"
+    - else
+      = "Fluence.editor.togglePreview();"
   - else
-    = "Fluence.editor.togglePreview();"
+    = "hljs.highlightAll();"

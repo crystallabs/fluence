@@ -1,19 +1,32 @@
+require "./spec_helper"
+
 describe Fluence::Page::InternalLinks do
-  it "test basic internal links listing" do
-    #index = Fluence::Index(Fluence::Page).new("")
-    #page = Fluence::Page.new("home")
-    str = "I [[am-a-link]] and [[me-too]]\n"
-    links = Fluence::Page::InternalLinks.links_in_content str
+  it "lists standard markdown links to wiki pages" do
+    str = "I [link](am-a-link) and [x](/pages/me-too), not [e](https://example.com) or ![img](pic.png)\n"
+    links = Fluence::Page::InternalLinks.links_in_content str, "home"
 
-    link1 = "am-a-link"
-    link2 = "me-too"
-    link1_idx = str.index link1
-    link2_idx = str.index link2
+    links.map(&.[1]).should eq ["am-a-link", "me-too"]
+    links[0][0].should eq str.index("am-a-link")
+  end
 
-    links.size.should eq 2
-    links[0][0].should eq link1_idx
-    links[0][1].should eq link1
-    links[1][0].should eq link2_idx
-    links[1][1].should eq link2
+  it "resolves relative targets against the page directory" do
+    str = "[s](sibling) [u](../up) [a](/pages/abs) [out](../../escape)"
+    links = Fluence::Page::InternalLinks.links_in_content str, "dir/page"
+
+    links.map(&.[1]).should eq ["dir/sibling", "up", "abs"]
+  end
+
+  it "skips code blocks, anchors, and non-page paths" do
+    str = "```\n[x](y)\n```\n[a](#anchor)\n[m](/media/home/file.pdf)\n[b](real)\n"
+    links = Fluence::Page::InternalLinks.links_in_content str, "home"
+
+    links.map(&.[1]).should eq ["real"]
+  end
+
+  it "keeps fragments when rewriting links on rename" do
+    content = "See [Old](/pages/old-page#part) and [rel](old-page), not [other](old-page-2)."
+    updated = Fluence::Page::InternalLinks.rewrite_links content, "home", "old-page", "/pages/new-page"
+
+    updated.should eq "See [Old](/pages/new-page#part) and [rel](/pages/new-page), not [other](old-page-2)."
   end
 end

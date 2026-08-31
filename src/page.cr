@@ -55,7 +55,7 @@ class Fluence::Page < Fluence::File
 		@title = heading ? heading.lchop("# ").strip : ::File.basename(@name)
 		@slug = Page.title_to_slug @title
 		@toc = Page::TableOfContent.toc content
-		@intlinks = Page::InternalLinks.links_in_content content
+		@intlinks = Page::InternalLinks.links_in_content content, @name
 		self
 	end
 
@@ -80,7 +80,7 @@ class Fluence::Page < Fluence::File
 	end
 
 	# Renames the page, updates self, and returns self. With *intlinks*,
-	# [[internal links]] pointing at the old name are rewritten in all
+	# markdown links pointing at the old name are rewritten in all
 	# other pages.
 	def rename!(user : Fluence::User, new_name, overwrite = false, subtree = false, intlinks : Bool? = nil)
 		old_name = @name
@@ -95,15 +95,14 @@ class Fluence::Page < Fluence::File
 		self
 	end
 
-	# Rewrites [[old_name]] and [[old_name|...]] links in all other pages to
+	# Rewrites markdown links resolving to *old_name* in all other pages to
 	# point at this page's current name.
 	private def update_links(user : Fluence::User, old_name : String)
-		pattern = /(?<!\\)\[\[#{Regex.escape old_name}(?=\]\]|\|)/
 		Fluence::PAGES.names.each do |name|
 			next if name == @name
 			page = Fluence::Page.new name
 			content = page.read rescue next
-			updated = content.gsub pattern, "[[#{@name}"
+			updated = Page::InternalLinks.rewrite_links content, name, old_name, @url
 			page.write user, updated if updated != content
 		end
 	end

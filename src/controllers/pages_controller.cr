@@ -13,7 +13,7 @@ class PagesController < ApplicationController
 
   private def show_show(page, media)
     body = page.exists? ? (page.read rescue "") : ""
-    body_html = Fluence::Markdown.to_html body, page, Fluence::PAGES
+    body_html = Fluence::Markdown.to_html body
     Fluence::ACL.load!
 
     if !page.exists?

@@ -11,6 +11,32 @@ ul, ol {
     flex: 0 0 20%;
 }
 
+/* Server-rendered page content shown to readers. */
+#page-body {
+  padding: 10px 20px;
+}
+
+#page-body table {
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+}
+
+#page-body th, #page-body td {
+  border: 1px solid #dee2e6;
+  padding: .3rem .6rem;
+}
+
+#page-body blockquote {
+  border-left: 4px solid #dee2e6;
+  padding-left: .75rem;
+  color: #6c757d;
+}
+
+#page-body pre {
+  padding: .5rem;
+  background: #f8f9fa;
+}
+
 a:not([href*="//"]) {
 }
 

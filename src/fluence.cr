@@ -69,6 +69,14 @@ module Fluence
 	PAGES = Fluence::Catalog(Fluence::Page).new("pages")
 	MEDIA = Fluence::Catalog(Fluence::Media).new("media")
 
+	# One-shot conversion of legacy [[wikilinks]] to standard markdown links.
+	# Deliberate opt-in: it rewrites and commits every affected page.
+	if ENV["FLUENCE_MIGRATE_WIKILINKS"]?
+		changed = Fluence::WikilinkMigration.run! Fluence::User.new("wikilink-migration", "")
+		puts "Wikilink migration: #{changed} page(s) converted to standard markdown links."
+		exit 0
+	end
+
 #	# Install file watcher on data files.
 #	# Exact use of the triggers is to be determined later.
 #	# (It could be used to catch file modifications which happen
