@@ -1,3 +1,4 @@
+require "yaml"
 require "./errors"
 
 # `File` is a representation of anything that can be accessed
@@ -27,6 +28,7 @@ abstract class Fluence::File
   # Title of the page
   getter title : String
 
+  @[YAML::Field(ignore: true)]
   getter content : String?
 
   # Pointless initialize needed due to https://github.com/crystal-lang/crystal/issues/2827
@@ -124,7 +126,7 @@ abstract class Fluence::File
     while page_dir_elements.size != base_dir_elements.size
       dir_path = page_dir_elements.join(::File::SEPARATOR)
       if Dir.empty? dir_path
-        Dir.rmdir dir_path
+        Dir.delete dir_path
         page_dir_elements.pop
       else
         break

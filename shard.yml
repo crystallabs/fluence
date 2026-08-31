@@ -4,21 +4,23 @@ version: 0.6.1
 authors:
   - Davor Ocelic <docelic@crystallabs.io>
 
-crystal: 0.34.0
+crystal: ">= 1.0.0"
 
 license: GPL-3
 
 dependencies:
   kemal:
     github: kemalcr/kemal
-    branch: master
+    version: ~> 1.13
   slang:
     github: jeromegn/slang
+    version: ~> 1.7.3
   kemal-session:
     github: kemalcr/kemal-session
-  kemal-flash:
-    github: neovintage/kemal-flash
+    version: ~> 1.6
   markd:
     github: icyleaf/markd
+    version: ~> 0.6
   kilt:
     github: jeromegn/kilt
+    version: ~> 0.6.1

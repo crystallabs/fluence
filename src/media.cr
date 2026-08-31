@@ -9,15 +9,15 @@ require "./page/*"
 # As much as possible here should come from Fluence::File.
 class Fluence::Media < Fluence::File
 
-	YAML.mapping(
-		path: String,  # absolute path of the file, e.g. /srv/wiki/data/pages/xxx
-		name: String,   # name of the page, e.g. xxx or xxx/subpage1
-		url: String,   # real url of the page /pages/xxx
-		title: String, # Any title
-		slug: String,  # URL-friendly title
-		modification_time: Time,
-		size: UInt64
-	)
+	include YAML::Serializable
+
+	property path : String  # absolute path of the file, e.g. /srv/wiki/data/pages/xxx
+	property name : String  # name of the page, e.g. xxx or xxx/subpage1
+	property url : String   # real url of the page /pages/xxx
+	property title : String # Any title
+	property slug : String  # URL-friendly title
+	property modification_time : Time
+	property size : Int64
 
 	def initialize(name : String)
     name = Media.sanitize(name).strip "/"
@@ -33,7 +33,7 @@ class Fluence::Media < Fluence::File
 		# This data will be inaccurate (i.e. be current time) if an existing page
 		# is created with Fluence::Media.new("existing_name") and #process! is not called.
 		@modification_time = Time.local
-		@size = 0
+		@size = 0_i64
 
     jail!
 	end

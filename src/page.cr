@@ -18,17 +18,17 @@ class Fluence::Page < Fluence::File
 #  include Fluence::Page::TableOfContent
 #  include Fluence::Page::InternalLinks
 
-	YAML.mapping(
-		path: String,  # absolute path of the file, e.g. /srv/wiki/data/pages/xxx
-		name: String,   # name of the page, e.g. xxx or xxx/subpage1
-		url: String,   # real url of the page /pages/xxx
-		title: String, # Any title
-		slug: String,  # URL-friendly title
-		toc: Page::TableOfContent::Toc,
-		intlinks: Page::InternalLinks::LinkList,
-		modification_time: Time,
-		size: UInt64
-	)
+	include YAML::Serializable
+
+	property path : String  # absolute path of the file, e.g. /srv/wiki/data/pages/xxx
+	property name : String  # name of the page, e.g. xxx or xxx/subpage1
+	property url : String   # real url of the page /pages/xxx
+	property title : String # Any title
+	property slug : String  # URL-friendly title
+	property toc : Page::TableOfContent::Toc
+	property intlinks : Page::InternalLinks::LinkList
+	property modification_time : Time
+	property size : Int64
 
 	def initialize(name : String)
     name = Page.sanitize(name).strip "/"
@@ -46,7 +46,7 @@ class Fluence::Page < Fluence::File
 		# This data will be inaccurate (i.e. be current time) if an existing page
 		# is created with Fluence::Page.new("existing_name") and #process! is not called.
 		@modification_time = Time.local
-		@size = 0
+		@size = 0_i64
 
     jail!
 	end

@@ -8,7 +8,7 @@ class Router
         # puts "Before init"
         # pp env.request.cookies
         # pp env.response.cookies
-        context.cookies.fill_from_headers(env.request.headers)
+        context.cookies.fill_from_client_headers(env.request.headers)
         # puts "After init"
         # pp env.request.cookies
         # pp env.response.cookies

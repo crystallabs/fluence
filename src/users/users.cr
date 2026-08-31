@@ -11,15 +11,11 @@ class Fluence::Users < Lockable
   class NotExists < Exception
   end
 
-  # getter file : String
-  # getter default : User?
-  # @list : Hash(String, User)
+  include YAML::Serializable
 
-  YAML.mapping(
-    file: String,
-    default: User?,
-    list: Hash(String, User)
-  )
+  property file : String
+  property default : User?
+  property list : Hash(String, User)
 
   def initialize(@file, @default : User? = nil)
     @list = {} of String => User

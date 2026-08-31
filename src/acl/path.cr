@@ -1,9 +1,11 @@
+require "yaml"
+
 class Acl::Path
-  YAML.mapping(
-    value: String,
-  )
+  include YAML::Serializable
 
   getter value : String
+
+  @[YAML::Field(ignore: true)]
   getter regex : Regex?
 
   def self.value_to_regex(value : String)

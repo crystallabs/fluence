@@ -5,11 +5,11 @@ module Fluence
 	# Index is an index of all files in a chosen subdirectory and their saved or generated metadata.
 	# The indexed subdirectories are usually `pages/` containing all Fluence Wiki pages, and `media/` containing all media/attachments associated with the individual pages.
   class Index(T) < Lockable
-    YAML.mapping(
-      file: String,
-			directory: String,
-      entries: Hash(String, T) # path, entry
-    )
+    include YAML::Serializable
+
+    property file : String
+    property directory : String
+    property entries : Hash(String, T) # path, entry
 
 		# Creates an empty index.
 		# `@subdir` is name of the subdirectory within `datadir` that needs to be indexed, and will almost always be "pages" or "media".

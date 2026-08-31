@@ -6,15 +6,11 @@ require "./perm"
 # It is used by `Groups`.
 # NOTE: I did not use Hash().new(default) because it is annoying with passing the permissions in the constructor
 class Acl::Group
-  # getter name : String
-  # getter permissions : Hash(String, Acl::Perm)
-  # property default : Acl::Perm
+  include YAML::Serializable
 
-  YAML.mapping(
-    name: String,
-    permissions: Hash(Acl::Path, Acl::Perm),
-    default: Acl::Perm
-  )
+  property name : String
+  property permissions : Hash(Acl::Path, Acl::Perm)
+  property default : Acl::Perm
 
   # Create a new named Group with optional parameters.
   #
@@ -105,7 +101,7 @@ class Acl::Group
 
   # Remove the permissions associated to the path
   def delete(path : String)
-    @permissions.delete_if { |current_path| current_path.to_s == path }
+    @permissions.reject! { |current_path, _| current_path.to_s == path }
     self
   end
 end

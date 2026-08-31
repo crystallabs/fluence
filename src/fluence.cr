@@ -3,8 +3,9 @@ require "yaml"
 require "json"
 require "kemal"
 require "kemal-session"
-require "kemal-flash"
 require "kilt/slang"
+
+require "./flash"
 
 require "./version"
 require "./controllers/application_controller"

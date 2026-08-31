@@ -9,12 +9,12 @@ class Fluence::User
   class Invalid < Exception
   end
 
-  YAML.mapping(
-    name: String,
-    password: String,
-    groups: Array(String),
-    token: String?,
-  )
+  include YAML::Serializable
+
+  property name : String
+  property password : String
+  property groups : Array(String)
+  property token : String?
 
   # ```
   # User.new "admin", "password", %w(admin user)
@@ -47,8 +47,6 @@ class Fluence::User
   # Implement Acl::Entity #
   #########################
   include Acl::Entity
-
-  getter groups : Array(String)
 
   def group?(group : String) : Bool
     @groups.includes? group
