@@ -163,8 +163,8 @@
         - if page.exists?
           #page-toc.col-12
             span Table of Contents
-            - if (index_entry = Fluence::PAGES[page]?) && (!index_entry.toc.empty?)
-              == add_toc index_entry.toc
+            - if !page.toc.empty?
+              == add_toc page.toc
             hr
           #page-intlinks.col-12
             span Internal Links

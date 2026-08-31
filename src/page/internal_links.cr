@@ -4,15 +4,7 @@ class Fluence::Page < Fluence::File
     alias Link = {Int32, String}
     alias LinkList = Array(Link)
 
-#    def intlinks(path : String)
-#      InternalLinks.intlinks path
-#    end
-
-    def self.intlinks(path : String)
-      content = ::File.exists?(path) ? ::File.read path : ""
-      links_in_content content
-    end
-
+    # Lists the [[internal links]] found in markdown *content*.
     def self.links_in_content(content : String)
       links = LinkList.new
       link_begin = -1
@@ -21,7 +13,7 @@ class Fluence::Page < Fluence::File
         next if link_end.nil?
         end_of_line = content.index '\n', link_begin
         next if end_of_line && end_of_line < link_end
-        links << { link_begin + 2, content[link_begin + 2..link_end - 1] }
+        links << {link_begin + 2, content[link_begin + 2..link_end - 1]}
       end
       links
     end

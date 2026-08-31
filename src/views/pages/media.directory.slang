@@ -1,6 +1,5 @@
 ul.list-unstyled
   - names = entries.keys.sort!
-  - STDERR.puts names.inspect
   - names.each do |name|
     - entry = entries[name][1]
     li

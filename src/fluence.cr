@@ -14,7 +14,8 @@ require "../config/application"
 require "../config/options"
 require "./lockable"
 require "./errors"
-require "./git"
+require "./storage"
+require "./catalog"
 require "./**"
 
 Kemal.config.host_binding = Fluence::OPTIONS.host
@@ -22,8 +23,11 @@ Kemal.config.port = Fluence::OPTIONS.port
 
 module Fluence
   Dir.mkdir_p Fluence::OPTIONS.metadir
-	Dir.mkdir_p Fluence::Page.subdirectory
-	Dir.mkdir_p Fluence::Media.subdirectory
+
+  # Wiki content storage — a git repository (bare by default for new
+  # installations, or the pre-existing working tree of older ones).
+  # Initialized eagerly so a misconfigured data directory fails at boot.
+  STORAGE = Fluence::Storage.current
 
   DEFAULT_USER = Fluence::User.new *Fluence::OPTIONS.guest
 
@@ -57,30 +61,13 @@ module Fluence
     ACL.save!
   end
 
-  # The list of pages with a lot of meta-data. Same behavior like
-  # `USERS` and `ACL`.
-	# An existing but empty index is rebuilt from disk contents: index files
-	# written by Fluence <= 0.6 were always empty due to a bug, and rebuilding
-	# also heals a manually truncated index.
-	PAGES = begin
-		idx = if ::File.exists? "#{Fluence::OPTIONS.metadir}/pages"
-			Fluence::Index(Fluence::Page).new("pages").load!
-		else
-			Fluence::Index(Fluence::Page).build("pages")
-		end
-		idx.entries.empty? ? Fluence::Index(Fluence::Page).build("pages") : idx
-	end
-
-  # The list of media with a lot of meta-data. Same behavior like
-  # `USERS` and `ACL`.
-	MEDIA = begin
-		idx = if ::File.exists? "#{Fluence::OPTIONS.metadir}/media"
-			Fluence::Index(Fluence::Media).new("media").load!
-		else
-			Fluence::Index(Fluence::Media).build("media")
-		end
-		idx.entries.empty? ? Fluence::Index(Fluence::Media).build("media") : idx
-	end
+	# Collection-level views over the storage. Stateless: every listing,
+	# title, and search goes to the storage (and thus git) directly, so
+	# external modifications are always visible and there is no index to
+	# rebuild. (The `meta/pages` and `meta/media` index files of Fluence
+	# <= 0.6 are no longer used and can be deleted.)
+	PAGES = Fluence::Catalog(Fluence::Page).new("pages")
+	MEDIA = Fluence::Catalog(Fluence::Media).new("media")
 
 #	# Install file watcher on data files.
 #	# Exact use of the triggers is to be determined later.

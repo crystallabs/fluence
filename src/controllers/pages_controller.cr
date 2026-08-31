@@ -4,34 +4,16 @@ class PagesController < ApplicationController
   def show
     acl_permit! :read
     flash["danger"] = params.query["flash.danger"] if params.query["flash.danger"]?
-    if page = Fluence::PAGES[params.url["path"]]?
-      # Page exists in the index
-    else
-      page = Fluence::Page.new params.url["path"]
-      # If page exists but was not found, this is a page someone added from cmdline. Incorporate it.
-      if page.exists?
-        Fluence::PAGES.transaction! { |index|
-          page.process!
-          index.add! page
-          flash["warning warning-created-externally"] = "Page exists on disk but was not created through the wiki. Processed and added it to the index"
-        }
-      end
-    end
-    media = Fluence::MEDIA[page.name]? || Fluence::Media.new page.name
+    page = Fluence::Page.new params.url["path"]
+    page.process! if page.exists?
+    media = Fluence::Media.new page.name
 
     show_show(page, media)
   end
 
   private def show_show(page, media)
-    if page.exists? && ( ::File.info(page.path).modification_time > page.modification_time)
-      Fluence::PAGES.transaction! { |_|
-        page.process!
-        flash["warning warning-re-process"] = "External modification to page detected. Processing any changes and showing the updated page"
-      }
-    end
-
-    body = page.read rescue ""
-    body_html = body ? Fluence::Markdown.to_html body, page, Fluence::PAGES.load! : ""
+    body = page.exists? ? (page.read rescue "") : ""
+    body_html = Fluence::Markdown.to_html body, page, Fluence::PAGES
     Fluence::ACL.load!
 
     if !page.exists?
@@ -56,7 +38,8 @@ class PagesController < ApplicationController
   # post /pages/*path
   def update
     acl_permit! :write
-    page = Fluence::PAGES[params.url["path"]]? || (Fluence::Page.new params.url["path"])
+    page = Fluence::Page.new params.url["path"]
+    page.process! if page.exists?
     if params.body["rename"]?
       update_rename(page)
     elsif params.body["delete"]?
@@ -70,12 +53,12 @@ class PagesController < ApplicationController
   end
 
   private def update_rename(main_page)
-    unless params.body["input-page-name"]?.to_s.strip.empty?
+    new_main_name = params.body["input-page-name"]?.to_s.strip
+    unless new_main_name.empty?
       pages = [main_page]
       if params.body["input-page-subtree"]?
-        pages += main_page.children.values.map{|v| v[1]}
+        pages += subtree_of main_page
       end
-      # TODO: verify if the user can write on input-page-name
       # TODO: if input-page-name does not begin with /, do relative rename to the current path
 
       old_main_page_name = main_page.name
@@ -83,14 +66,17 @@ class PagesController < ApplicationController
         old_url = page.url
         begin
           old_name = page.name
-          Fluence::PAGES.transaction! { |index|
-            new_name = page.name.sub /^#{old_main_page_name}/, params.body["input-page-name"]
-            old_path = page.path
+          new_name = page.name.sub /^#{Regex.escape old_main_page_name}/, new_main_name
 
-            page.rename! current_user, new_name, !!params.body["input-page-overwrite"]?, subtree: false, intlinks: !!params.body["input-page-intlinks"]?
-            index.rename old_name, page
-            Fluence::Page.remove_empty_directories old_path
-          }
+          # The user must be permitted to write at the destination too.
+          new_url = "#{Fluence::OPTIONS.pages_prefix}/#{Fluence::Page.sanitize(new_name).strip "/"}"
+          unless Fluence::ACL.permitted?(current_user, new_url, Acl::Perm::Write)
+            flash["danger"] = "You are not permitted to write to '#{new_url}'."
+            redirect_to old_url
+            return
+          end
+
+          page.rename! current_user, new_name, !!params.body["input-page-overwrite"]?, subtree: false, intlinks: !!params.body["input-page-intlinks"]?
           flash["success success-#{old_name}"] = "Page '#{old_name}' has been renamed to '#{page.name}'"
         rescue e : Fluence::Page::AlreadyExists
           flash["danger danger-#{page.name}"] = e.to_s
@@ -106,16 +92,12 @@ class PagesController < ApplicationController
     unless params.body["input-page-name"]?.to_s.strip.empty?
       pages = [main_page]
       if params.body["input-page-subtree"]?
-        pages += main_page.children.values.map{|v| v[1]}
+        pages += subtree_of main_page
       end
 
       pages.each do |page|
         begin
-          Fluence::PAGES.transaction! { |index|
-            index.delete page
-            page.delete current_user if page.exists?
-            Fluence::Page.remove_empty_directories page.path
-          }
+          page.delete current_user if page.exists?
           flash["success success-#{page.name}"] = "Page '#{page.name}' has been deleted"
         rescue e
           flash["danger danger-#{page.name}"] = e.to_s
@@ -129,12 +111,7 @@ class PagesController < ApplicationController
 
   private def update_edit(page)
     action = page.exists? ? "updated" : "created"
-    Fluence::PAGES.transaction! { |index|
-      page.update! current_user, params.body["body"]
-      unless Fluence::PAGES[page]?
-        index.add! page
-      end
-    }
+    page.update! current_user, params.body["body"]
     flash["success"] = %Q(Page '#{page.name}' has been #{action})
     redirect_to page.url
   rescue err
@@ -153,13 +130,22 @@ class PagesController < ApplicationController
 
   # get /pages/search?q=
   def search
-    #if query = params.query["q"]
-    # page = Fluence::Page.new(query.not_nil!)
-    # # TODO: a real search
-    #end
-    #page = nil
-    #title = "Search Results - #{title()}"
-    #redirect_to (query.empty? || !page) ? "#{Fluence::OPTIONS.homepage}" : page.url
-    redirect_to "#{Fluence::OPTIONS.homepage}"
+    acl_permit! :read
+    query = params.query["q"]?.to_s.strip
+    results = [] of Fluence::Page
+    unless query.empty?
+      results = Fluence::PAGES.search(query).compact_map do |name|
+        page = Fluence::Page.new name
+        next unless Fluence::ACL.permitted?(current_user, page.url, Acl::Perm::Read)
+        page.process!
+      end
+    end
+    title = "Search - #{title()}"
+    render "search.slang"
+  end
+
+  private def subtree_of(page)
+    prefix = page.name + "/"
+    Fluence::PAGES.names.select(&.starts_with?(prefix)).map { |name| Fluence::Page.new(name).process! }
   end
 end

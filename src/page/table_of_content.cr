@@ -1,35 +1,24 @@
-require "../file"
 class Fluence::Page < Fluence::File
   module TableOfContent
     alias TocLine = {Int32, String}
     alias Toc = Array(TocLine)
 
-    # The table of content of the file
-    def toc : Toc
-      TableOfContent.toc @path
-    end
-
-    def self.toc(page : Fluence::Page) : Toc
-			toc page.path
-		end
-    def self.toc(path : String) : Toc
+    # Builds the table of contents from markdown *content*, skipping
+    # fenced code blocks.
+    def self.toc(content : String) : Toc
       toc = Toc.new
-      ::File.open path, "r" do |f|
+      code_block = false
 
-				code_block = false
-
-        while line = f.gets
-					if line =~ /^```/
-						code_block = !code_block
-					end
-
-					next if code_block
-
-          toc_line = get_toc_line line
-          toc << toc_line.as(TocLine) unless toc_line.nil?
+      content.each_line do |line|
+        if line =~ /^```/
+          code_block = !code_block
         end
+
+        next if code_block
+
+        toc_line = get_toc_line line
+        toc << toc_line.as(TocLine) unless toc_line.nil?
       end
-      #pp toc
       toc
     end
 

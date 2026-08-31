@@ -2,11 +2,14 @@
 [![Version](https://img.shields.io/github/tag/crystallabs/fluence.svg?maxAge=360)](https://github.com/crystallabs/fluence/releases/latest)
 [![License](https://img.shields.io/github/license/crystallabs/fluence.svg)](https://github.com/crystallabs/fluence/blob/master/LICENSE)
 
-# Fluence 0.6.1
+# Fluence 0.7.0
 
 Elegant wiki powered by Crystal, with markdown as native format and a WYSIWYG editor.
 
-It uses file-based storage versioned using Git. Wiki pages are created as files and directories on disk and they can be modified in Fluence or via filesystem directly.
+Content is stored in a Git repository, which is the single source of truth — Fluence keeps no cache or index that can go stale. Two storage modes are supported and auto-detected:
+
+1. **Bare repository** (default for new installations): the data directory is a bare Git repository. Fluence reads from and commits to it directly, without any checkout. External contributions are made with regular Git tooling: `git clone` the data directory (or serve it over SSH/HTTP), edit, commit, and `git push` — pushed changes are visible in the wiki immediately.
+1. **Working tree** (used automatically for pre-0.7 data directories): the data directory is a normal checkout. Pages can also be created and edited directly on the filesystem, and such changes are likewise visible immediately. Set the environment variable `FLUENCE_STORAGE=worktree` before first startup to choose this mode for a new installation.
 
 Fluence uses latest versions: Bootstrap 5.3.8, jQuery 3.7.1 slim, EasyMDE 2.20.0, Font Awesome 6.7.2, and highlight.js 11.11.1. All assets are served locally; pages make no requests to external CDNs.
 
@@ -47,11 +50,12 @@ Here is how it currently looks:
 
 When Fluence starts, by default it will create two subdirectories in the current directory:
 
-1. `data/` (further subdivided into `pages/` and `media/`) for actual Wiki pages and their attached media files
-1. `meta/` for metadata, which currently consists of files `users`, `acl`, `pages`, and `media`
+1. `data/` for actual Wiki pages and their attached media files — a Git repository (bare by default; see storage modes above), with pages under `pages/` and attachments under `media/` in the repository tree
+1. `meta/` for metadata, which currently consists of files `users` and `acl`
 
-There are no files or directories required to pre-exist for Fluence to work. Feel free to delete any part of data or metadata as long as you restart Fluence after that.
-Files `meta/pages` and `meta/media` contain indexes of pages and media content respectively. If you believe their contents have gone out of sync with the actual on-disk state (possibly due to a bug or external modifications to files which Fluence didn't auto-detect and update), delete these files and restart Fluence; the indices will be regenerated from actual on-disk contents.
+There are no files or directories required to pre-exist for Fluence to work. The locations can be overridden with the environment variables `FLUENCE_DATADIR` and `FLUENCE_METADIR`.
+
+There is no index or cache: listings, titles, internal-link resolution, and search always operate on the current repository contents, so nothing can go out of sync. (The `meta/pages` and `meta/media` index files written by Fluence <= 0.6 are no longer used and can be deleted.)
 
 
 

@@ -1,64 +1,62 @@
-require "yaml"
 require "./errors"
+require "./storage"
 
 # `File` is a representation of anything that can be accessed
 # via some sort of an URL and has ACLs applying to it.
 
-# It is used to associate path, url and data.
+# It is used to associate storage path, url and data.
 #
-# Pages and Media are two primary uses. Originally, all of this was
-# in the Page class directly. Now file is separate `File` to serve
-# as basis for both Page and Media.
+# Pages and Media are two primary uses.
 #
-# It can also jail! the path into the *OPTIONS.datadir*.
+# Content lives in `Fluence::Storage` under a repo-relative path such as
+# "pages/foo.md"; `jail!` ensures the path cannot escape the class' subtree.
 abstract class Fluence::File
-
   class AlreadyExists < Exception
   end
 
-  # Path of the file that contains the page
+  # Repo-relative storage path, e.g. "pages/foo/bar.md"
   property path : String
 
-  # Url of the page (without any prefix)
+  # Name of the entry, e.g. "foo/bar"
   property name : String
 
-  # Complete Url of the page
+  # Complete URL of the entry
   property url : String
 
-  # Title of the page
+  # Title of the entry
   property title : String
 
-  @[YAML::Field(ignore: true)]
-  getter content : String?
-
-  # Pointless initialize needed due to https://github.com/crystal-lang/crystal/issues/2827
-  def initialize(@path,@name,@url,@title)
+  def initialize(@path, @name, @url, @title)
   end
 
   abstract def url_prefix : String
 
-  # translate a name ("/test/title" for example)
-  # into a directory path ("/srv/data/test/title)
-  def self.name_to_directory(name : String)
-    ::File.expand_path self.sanitize(name), subdirectory
+  # Storage subtree this class lives under, e.g. "pages".
+  abstract def storage_prefix : String
+
+  # Re-derives metadata (title etc.) from the current content.
+  abstract def process!
+
+  protected def storage : Fluence::Storage
+    Fluence::Storage.current
   end
 
-  # verify if the *file* is in the current dir (avoid ../ etc.)
-  # it will raise a `Error403` if the file is out of the datadir
+  # Verifies that the storage path is normalized and stays within this
+  # class' subtree (no "..", absolute paths, etc.), raising `Error403`
+  # otherwise.
   def jail!
-    # TODO: consider security of ".git/"
-
-    # The @fpath is already expanded (::File.expand_path) in the constructor
-    if self.class.subdirectory != @path[0..(self.class.subdirectory.size - 1)]
-      raise Error403.new "Out of chroot (#{@path} on #{self.class.subdirectory})"
+    prefix = "#{storage_prefix}/"
+    normalized = Path.posix(@path).normalize.to_s
+    unless normalized == @path && @path.starts_with?(prefix) && @path.size > prefix.size
+      raise Error403.new "Out of chroot (#{@path} on #{prefix})"
     end
     self
   end
 
-  # Reads the *file* and returns the content.
+  # Reads the content.
   def read
     jail!
-    ::File.read @path
+    storage.read @path
   end
 
   def update!(user : Fluence::User, body)
@@ -67,40 +65,43 @@ abstract class Fluence::File
     self
   end
 
-  # Writes into the *file*, and commit.
+  # Writes *body* as the new content, committing to git.
   def write(user : Fluence::User, body)
     jail!
-    Dir.mkdir_p parent_directory
-    ::File.write @path, body
-    commit! user, exists? ? "update" : "create"
+    action = exists? ? "update" : "create"
+    storage.write @path, body, user, "#{action} #{@name}"
   end
 
-  # Deletes the *file*, and commits
+  # Deletes the content, committing to git.
   def delete(user : Fluence::User)
     jail!
-    ::File.delete @path
-    commit! user, "delete"
+    storage.delete @path, user, "delete #{@name}"
     self
   end
 
-  # Checks if the *file* exists
   def exists?
     jail!
-    ::File.exists? @path
+    storage.exists? @path
   end
 
-  def parent_directory
-    ::File.dirname @path
+  # Content size in bytes; 0 if absent.
+  def size : Int64
+    storage.size(@path) || 0_i64
   end
 
-  # Save the modifications on the *file* into the git repository
-  # TODO: lock before commit
-  def commit!(user : Fluence::User, message, other_files : Array(String) = [] of String)
-    files = [@path] + other_files
-    Fluence::Git.run ["add", "--"] + files
-    Fluence::Git.run ["commit", "--no-gpg-sign",
-                      "--author", "#{user.name} <#{user.name}@localhost>",
-                      "-m", "#{message} #{@name}", "--"] + files
+  # Renames this entry's content to *new_page*'s location, committing to
+  # git. Neither object is mutated; use the subclasses' `rename!` for that.
+  protected def rename_to(new_page : Fluence::File, user : Fluence::User, overwrite = false)
+    jail!
+    if name == new_page.name
+      raise AlreadyExists.new "Old and new name are the same, renaming not possible."
+    end
+    new_page.jail!
+    if new_page.exists? && !overwrite
+      raise AlreadyExists.new %Q(Destination exists and overwriting was not requested. Do you want to visit the page #{new_page.name} instead?)
+    end
+    storage.rename @path, new_page.path, user, "rename #{@name} -> #{new_page.name}"
+    new_page
   end
 
   def self.sanitize(text : String)
@@ -109,19 +110,5 @@ abstract class Fluence::File
 
   def self.title_to_slug(title : String) : String
     title.gsub(/[^[:alnum:]^\/]+/, "-").downcase
-  end
-
-  def self.remove_empty_directories(path)
-    page_dir_elements = ::File.dirname(path).split ::File::SEPARATOR
-    base_dir_elements = Fluence::Page.subdirectory.split ::File::SEPARATOR
-    while page_dir_elements.size != base_dir_elements.size
-      dir_path = page_dir_elements.join(::File::SEPARATOR)
-      if Dir.empty? dir_path
-        Dir.delete dir_path
-        page_dir_elements.pop
-      else
-        break
-      end
-    end
   end
 end

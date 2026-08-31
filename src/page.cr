@@ -7,76 +7,57 @@ require "./page/*"
 # `Page` is a representation of something that can be accessed
 # from a URL /pages/*path.
 #
-# It is used to associate path, name (and URL), and data.
-# Is is can also jails the path into the *OPTIONS.datadir* to be sure that
-# there is no attack by writing files outside of the directory where the pages
-# must be stored.
+# It associates a name (and URL) with content stored under "pages/" in the
+# wiki storage. Title, table of contents, and internal links are derived
+# from the content on demand via `process!`; nothing is cached.
 class Fluence::Page < Fluence::File
-
-# Disabled for now due to:
-# https://github.com/crystal-lang/crystal/issues/2827
-#  include Fluence::Page::TableOfContent
-#  include Fluence::Page::InternalLinks
-
-	include YAML::Serializable
-
-	# path, name, url, and title are declared in Fluence::File and
-	# serialized here through YAML::Serializable's inherited-ivar walk.
-	property slug : String # URL-friendly title
+	property slug : String  # URL-friendly title
 	property toc : Page::TableOfContent::Toc
 	property intlinks : Page::InternalLinks::LinkList
-	property modification_time : Time
-	property size : Int64
 
 	def initialize(name : String)
-    name = Page.sanitize(name).strip "/"
-		url = url_prefix + "/" + name
-    path = Page.name_to_directory(name)+ ".md"
-
-		# Needed due to https://github.com/crystal-lang/crystal/issues/2827
+		name = Page.sanitize(name).strip "/"
 		title = ::File.basename name
-		super(path,name,url,title)
+		super("pages/#{name}.md", name, "#{Fluence::OPTIONS.pages_prefix}/#{name}", title)
 
 		@slug = Page.title_to_slug @title
 		@intlinks = Page::InternalLinks::LinkList.new
 		@toc = Page::TableOfContent::Toc.new
 
-		# This data will be inaccurate (i.e. be current time) if an existing page
-		# is created with Fluence::Page.new("existing_name") and #process! is not called.
-		@modification_time = Time.local
-		@size = 0_i64
-
-    jail!
+		jail!
 	end
 
-  # translates a name ("/test/title" for example)
-  # into a file path ("/srv/data/test/title.md)
-  def self.name_to_path(name : String)
-    name_to_directory(name) + ".md"
-  end
+	def storage_prefix : String
+		"pages"
+	end
 
+	# Beginning of the URL
+	def url_prefix : String
+		Fluence::OPTIONS.pages_prefix
+	end
+
+	# Translates a storage path ("pages/test/title.md") into a page name
+	# ("test/title"); nil for paths that are not wiki pages.
+	def self.storage_path_to_name(path : String) : String?
+		return nil unless path.starts_with?("pages/") && path.ends_with?(".md")
+		path.lchop("pages/").chomp(".md")
+	end
+
+	# Pages take their display title from their first markdown heading.
+	def self.titled?
+		true
+	end
+
+	# Re-derives title, table of contents, and internal links from content.
 	def process!
-		# TODO read all this from one copy of contents
-    title = ::File.read(@path).split("\n").find { |l| l.starts_with? "# " }
-    @title = if title; title.strip("# ").strip else @name.sub /^.+\//, "" end
+		content = exists? ? read : ""
+		heading = content.each_line.find(&.starts_with?("# "))
+		@title = heading ? heading.lchop("# ").strip : ::File.basename(@name)
 		@slug = Page.title_to_slug @title
-		@toc = Page::TableOfContent.toc @path
-		@intlinks = Page::InternalLinks.intlinks @path
-		fi = ::File.info(@path)
-		@modification_time = fi.modification_time
-		@size = fi.size
+		@toc = Page::TableOfContent.toc content
+		@intlinks = Page::InternalLinks.links_in_content content
 		self
 	end
-
-  # Directory where the pages are stored
-  def self.subdirectory
-    ::File.join(Fluence::OPTIONS.datadir, "pages") + ::File::SEPARATOR
-  end
-
-  # Beginning of the URL
-  def url_prefix : String
-    Fluence::OPTIONS.pages_prefix
-  end
 
 	def children1
 		Fluence::PAGES.children1 self
@@ -86,68 +67,44 @@ class Fluence::Page < Fluence::File
 		Fluence::PAGES.children self
 	end
 
-  # Renames the page without modifying the current Page object.
-	# Returns the new Page object where only path, name, and url fields may be correct and/or initialized.
-  def rename(user : Fluence::User, new_name, overwrite = false, subtree = false, git = true, intlinks = false)
-    jail!
-    Dir.mkdir_p ::File.dirname new_name
-		if name == new_name
-			raise AlreadyExists.new "Old and new name are the same, renaming not possible."
-		end
+	# Does any page exist below this one?
+	def directory?
+		prefix = @name + "/"
+		Fluence::PAGES.names.any? &.starts_with?(prefix)
+	end
 
-		# Mostly disposable, here just to check jail.
-		new_page = Page.new new_name
-		new_page.jail!
+	# Renames the page without modifying the current Page object.
+	# Returns the new Page object.
+	def rename(user : Fluence::User, new_name, overwrite = false, subtree = false, intlinks = false)
+		rename_to Page.new(new_name), user, overwrite
+	end
 
-		# TODO instead of raising, add flash message and skip
-		# It would be sufficient to check the Index for existence of page,
-		# but given that unintended deletions/overwrites of content can be
-		# a problem, test in a more certain way by testing file existence.
-		if ::File.exists?(new_page.path) && !overwrite
-			raise AlreadyExists.new %Q(Destination exists and overwriting was not requested. Do you want to visit the page #{new_page.name} instead?)
-		else
-			Dir.mkdir_p ::File.dirname new_page.path
-			::File.rename path, new_page.path
-			files = [new_page.path]
-
-			if git
-				commit! user, "rename", other_files: files
-			end
-		end
-
-		Fluence::Page.new new_name
-  end
-
-	# Renames the page, updates self, and returns self
-	def rename!(user : Fluence::User, new_name, overwrite = false, subtree = false, git = true, intlinks : Bool? = nil)
+	# Renames the page, updates self, and returns self. With *intlinks*,
+	# [[internal links]] pointing at the old name are rewritten in all
+	# other pages.
+	def rename!(user : Fluence::User, new_name, overwrite = false, subtree = false, intlinks : Bool? = nil)
 		old_name = @name
-		new_page = rename user, new_name, overwrite, subtree, git, intlinks
+		new_page = rename user, new_name, overwrite
 		@path = new_page.path
 		@name = new_page.name
 		@url = new_page.url
-		jail!
 		process!
 
-		if intlinks
-			Fluence::PAGES.entries.each do |_,p|
-				p.intlinks.each_with_index do |l, i|
-					p.intlinks[i] = { l[0], l[1].gsub /^#{old_name}(?=\/|$)/, @name }
-					p.jail! # Just in case
-					content = ::File.read p.path
-					content = content .gsub /(?<!\\)\[\[#{old_name}\]\]/, "[[" + @name + "]]"
-					::File.write p.path, content
-				end
-			end
-		end
+		update_links user, old_name if intlinks
 
 		self
 	end
 
-	def directory
-		@path.chomp ".md"
-	end
-
-	def directory?
-		::File.exists? directory
+	# Rewrites [[old_name]] and [[old_name|...]] links in all other pages to
+	# point at this page's current name.
+	private def update_links(user : Fluence::User, old_name : String)
+		pattern = /(?<!\\)\[\[#{Regex.escape old_name}(?=\]\]|\|)/
+		Fluence::PAGES.names.each do |name|
+			next if name == @name
+			page = Fluence::Page.new name
+			content = page.read rescue next
+			updated = content.gsub pattern, "[[#{@name}"
+			page.write user, updated if updated != content
+		end
 	end
 end

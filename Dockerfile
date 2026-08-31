@@ -6,18 +6,15 @@ COPY . .
 RUN crystal build --release --static -o bin/fluence src/fluence.cr
 
 FROM alpine:3.22
-# git is required at runtime: page edits are committed to a repository in data/.
-# The committer identity is used for `git commit`; page authors are recorded
-# via --author on each commit.
-RUN apk add --no-cache git \
- && git config --system user.name "Fluence Wiki" \
- && git config --system user.email "fluence@localhost" \
- && git config --system init.defaultBranch master
+# git is required at runtime: wiki content lives in a git repository in
+# data/ (bare by default). Author and committer identities are passed via
+# environment on each commit, so no git configuration is needed.
+RUN apk add --no-cache git
 WORKDIR /app
 COPY --from=build /app/bin/fluence ./fluence
 COPY public ./public
-# Wiki content (data/) and metadata (meta/) live under the working directory
-# by default; mount volumes here to persist them.
+# Wiki content (data/, a git repository) and metadata (meta/) live under
+# the working directory by default; mount volumes here to persist them.
 VOLUME ["/app/data", "/app/meta"]
 EXPOSE 3000
 CMD ["./fluence"]
