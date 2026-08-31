@@ -41,7 +41,7 @@ module Fluence
   ACL = Acl::Groups.new("#{Fluence::OPTIONS.metadir}/acl").load!
 
   # If there is no "guest" ACL, we assume that the ACL have not been initialized yet
-  # and we create a group "guest" and "user".
+  # and we create the groups "guest", "user", and "admin".
   # TODO: a proper "installation" procedure should be made to avoid these kind
   # of operation in a scope
   if ACL["guest"]?.nil?
@@ -57,7 +57,11 @@ module Fluence
     ACL["user"]["#{Fluence::OPTIONS.users_prefix}/register"] = Acl::Perm::None
     ACL["user"]["#{Fluence::OPTIONS.pages_prefix}/*"] = Acl::Perm::Write
     ACL["user"]["#{Fluence::OPTIONS.media_prefix}/*"] = Acl::Perm::Write
-    ACL["user"]["#{Fluence::OPTIONS.admin_prefix}/*"] = Acl::Perm::Write
+    ACL["user"]["#{Fluence::OPTIONS.admin_prefix}/*"] = Acl::Perm::None
+    # The first user to register joins this group (see UsersController);
+    # admins can add further members through the admin interface.
+    ACL.add("admin")
+    ACL["admin"]["/*"] = Acl::Perm::Write
     ACL.save!
   end
 

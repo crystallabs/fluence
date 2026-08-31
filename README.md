@@ -67,6 +67,6 @@ The Fluence Wiki is usable. On-disk format for data won't change so you will be 
 
 Important things to have in mind currently:
 
-1. The default permissions scheme (which works and can be configured via both `meta/acls` and GUI) by default makes all registered users automatically be admin, and registrations are always open and don't require any confirmation. Therefore, the initial target for deployment and test of Fluence are small/trusted intranets and teams.
+1. On a fresh install, the first user to register becomes admin (member of the `admin` group, which can manage users and ACLs); everyone who registers later is a regular user who can read and edit pages and media but not administer the wiki. Registration is open by default and doesn't require any confirmation; set `FLUENCE_REGISTRATION=closed` to disable self-registration, after which only admins can add accounts through the admin interface. The permission scheme can be further configured via both `meta/acl` and the GUI. Installations created by earlier versions keep their existing ACLs (where every registered user is admin); to tighten them, change the `user` group's `/admin/*` permission to `none` and add an `admin` group with write on `/*` in the ACL admin page.
 
 Things we have in mind or are working on are listed in [project issues](https://github.com/crystallabs/fluence/issues). Your comments will help us decide on priorities.

@@ -31,21 +31,37 @@ class UsersController < ApplicationController
 
   # get /users/register
   def register
+    return unless registration_open!
     acl_permit! :read
     render "register.slang"
   end
 
   # post /users/register
   def register_validates
+    return unless registration_open!
     acl_permit! :write
     # TODO: make a notification
     begin
-      user = Fluence::USERS.register! params.body["username"].to_s, params.body["password"].to_s
+      # The first user to register becomes admin; without that, a fresh
+      # install would have no way to ever reach the admin interface.
+      first_user = Fluence::USERS.load!.list.empty?
+      groups = first_user ? %w[user admin] : %w[user]
+      user = Fluence::USERS.register! params.body["username"].to_s, params.body["password"].to_s, groups
       flash["success"] = "You have now registered a new username '#{user.name}'. Please log in."
+      flash["info"] = "As the first registered user, you have administrator rights." if first_user
       redirect_to "#{Fluence::OPTIONS.users_prefix}/login"
     rescue err
       flash["danger"] = "Cannot register this account: #{err.message}."
       redirect_to "#{Fluence::OPTIONS.users_prefix}/register"
     end
+  end
+
+  # False, with a flash and a redirect queued, when self-registration
+  # is closed (FLUENCE_REGISTRATION=closed).
+  private def registration_open!
+    return true if Fluence::OPTIONS.registration_open?
+    flash["info"] = "Registration is closed on this wiki. Ask an administrator for an account."
+    redirect_to "#{Fluence::OPTIONS.users_prefix}/login"
+    false
   end
 end

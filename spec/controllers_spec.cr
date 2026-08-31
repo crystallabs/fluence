@@ -119,6 +119,58 @@ describe "media upload over HTTP" do
   end
 end
 
+describe "registration and admin defaults" do
+  it "makes the first registered user admin, later ones regular users" do
+    with_each_storage do |_, _|
+      backup = File.read(Fluence::USERS.file)
+      begin
+        Fluence::USERS.transaction!(&.list.clear)
+
+        first = SpecClient.new
+        first.post "/users/register", {"username" => "founder", "password" => "sekrit123"}
+        Fluence::USERS.load!.find("founder").groups.should eq %w[user admin]
+
+        second = SpecClient.new
+        second.post "/users/register", {"username" => "regular", "password" => "sekrit123"}
+        Fluence::USERS.load!.find("regular").groups.should eq %w[user]
+
+        first.post "/users/login", {"username" => "founder", "password" => "sekrit123"}
+        first.get("/admin/users").status_code.should eq 200
+
+        second.post "/users/login", {"username" => "regular", "password" => "sekrit123"}
+        response = second.get "/admin/users"
+        response.status_code.should eq 302
+        response.headers["Location"].should eq Fluence::OPTIONS.homepage
+      ensure
+        File.write(Fluence::USERS.file, backup)
+        Fluence::USERS.load!
+      end
+    end
+  end
+
+  it "refuses self-registration when closed, and hides the nav link" do
+    with_each_storage do |_, _|
+      Fluence::OPTIONS.registration = "closed"
+      begin
+        response = SpecClient.new.get "/users/register"
+        response.status_code.should eq 302
+        response.headers["Location"].should eq "#{Fluence::OPTIONS.users_prefix}/login"
+
+        client = SpecClient.new
+        response = client.post "/users/register", {"username" => "sneaky", "password" => "sekrit123"}
+        response.status_code.should eq 302
+        Fluence::USERS.load!.find?("sneaky").should be_nil
+
+        SpecClient.new.get("/users/login").body.should_not contain "/users/register"
+      ensure
+        Fluence::OPTIONS.registration = "open"
+      end
+
+      SpecClient.new.get("/users/login").body.should contain "/users/register"
+    end
+  end
+end
+
 describe "session and cookie hardening" do
   it "sets HttpOnly/SameSite login cookies" do
     client = SpecClient.new

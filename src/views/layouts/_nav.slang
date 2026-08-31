@@ -37,5 +37,6 @@ nav.navbar.navbar-expand-lg.bg-body-tertiary
         - else
           li.nav-item.active
             a.nav-link href="#{Fluence::OPTIONS.users_prefix}/login" | Login
-            li.navbar-text or
-            a.nav-link.active href="#{Fluence::OPTIONS.users_prefix}/register" Register
+            - if Fluence::OPTIONS.registration_open?
+              li.navbar-text or
+              a.nav-link.active href="#{Fluence::OPTIONS.users_prefix}/register" Register

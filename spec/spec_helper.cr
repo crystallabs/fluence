@@ -98,9 +98,14 @@ class SpecClient
     request "POST", path, headers, body
   end
 
-  # A client registered (first time only) and logged in over HTTP.
+  # A client registered (first time only) and logged in over HTTP. The
+  # first registration on a wiki becomes admin, so a seed account absorbs
+  # that role first — clients made here are always regular users.
   def self.login(username : String, password : String) : SpecClient
     client = new
+    if Fluence::USERS.load!.list.empty?
+      client.post "/users/register", {"username" => "seed-admin", "password" => "seed-password"}
+    end
     client.post "/users/register", {"username" => username, "password" => password}
     client.post "/users/login", {"username" => username, "password" => password}
     raise "login failed for #{username}" unless client.jar["session_id"]?

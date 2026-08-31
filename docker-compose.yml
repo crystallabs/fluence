@@ -7,9 +7,12 @@ services:
     # The session secret is generated on first boot and persisted in
     # meta/secret; set WIKI_SECRET only to override it explicitly.
     # Set FLUENCE_SECURE_COOKIES (to any value) when serving over HTTPS.
+    # Set FLUENCE_REGISTRATION to "closed" to disable self-registration
+    # (register the admin account first, then close it).
     #environment:
     #  WIKI_SECRET: change-me
     #  FLUENCE_SECURE_COOKIES: 1
+    #  FLUENCE_REGISTRATION: closed
     volumes:
       - fluence-data:/app/data
       - fluence-meta:/app/meta

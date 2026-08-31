@@ -38,6 +38,11 @@ module Fluence
       # Recursion limit for any recursive functions
       @recursion_limit = 1000
 
+      # Self-registration mode: "open" (anyone can register) or "closed"
+      # (only admins can add users, through the admin interface).
+      # Regardless of the mode, the first user to register becomes admin.
+      @registration = ENV.fetch("FLUENCE_REGISTRATION", "open")
+
       # Send cookies with the Secure attribute, so browsers only transmit
       # them over HTTPS. Enable (set FLUENCE_SECURE_COOKIES to any value)
       # when serving Fluence over TLS or behind an HTTPS reverse proxy;
@@ -73,6 +78,11 @@ module Fluence
     getter admin_prefix : String
     getter recursion_limit : Int32
     getter secure_cookies : Bool
+    property registration : String
+
+    def registration_open?
+      @registration != "closed"
+    end
     getter open_in_edit : Bool
     getter open_new_in_edit : Bool
     getter open_empty_in_edit : Bool
