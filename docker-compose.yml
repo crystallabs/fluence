@@ -4,9 +4,12 @@ services:
     image: fluence
     ports:
       - '3000:3000'
-    # Set WIKI_SECRET to keep sessions valid across restarts.
+    # The session secret is generated on first boot and persisted in
+    # meta/secret; set WIKI_SECRET only to override it explicitly.
+    # Set FLUENCE_SECURE_COOKIES (to any value) when serving over HTTPS.
     #environment:
     #  WIKI_SECRET: change-me
+    #  FLUENCE_SECURE_COOKIES: 1
     volumes:
       - fluence-data:/app/data
       - fluence-meta:/app/meta

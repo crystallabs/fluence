@@ -15,7 +15,7 @@ module Fluence::Helpers::User
           session.string("user.name", user.name)
           set_login_cookies_for(user.name)
         else
-          puts "Invalid cookies credentials"
+          Log.debug { "Invalid cookies credentials" }
           delete_cookie "user.name"
           delete_cookie "user.token"
         end
@@ -51,9 +51,9 @@ module Fluence::Helpers::User
   macro acl_permit!(perm, path = request.path)
     uses_login_cookies
     if Fluence::ACL.permitted?(current_user, {{path}}, Acl::PERM[{{perm}}])
-      puts "PERMITTED #{current_user.name} #{{{path}}} #{Acl::PERM[{{perm}}]}"
+      Log.debug { "PERMITTED #{current_user.name} #{{{path}}} #{Acl::PERM[{{perm}}]}" }
     else
-      puts "NOT PERMITTED #{current_user.name} #{{{path}}} #{Acl::PERM[{{perm}}]}"
+      Log.debug { "NOT PERMITTED #{current_user.name} #{{{path}}} #{Acl::PERM[{{perm}}]}" }
       flash["danger"] = "You are not permitted to access this resource (#{{{path}}}, #{{{perm}}})."
       redirect_to case {{path}}
       when Fluence::OPTIONS.homepage

@@ -38,6 +38,12 @@ module Fluence
       # Recursion limit for any recursive functions
       @recursion_limit = 1000
 
+      # Send cookies with the Secure attribute, so browsers only transmit
+      # them over HTTPS. Enable (set FLUENCE_SECURE_COOKIES to any value)
+      # when serving Fluence over TLS or behind an HTTPS reverse proxy;
+      # off by default because the default setup is plain HTTP.
+      @secure_cookies = !ENV["FLUENCE_SECURE_COOKIES"]?.nil?
+
       # Do all, or only new, and/or only empty pages, open in edit mode by default?
       # By default, only new pages open in edit mode; existing and empty pages open in view mode.
       @open_in_edit = false
@@ -66,6 +72,7 @@ module Fluence
     getter users_prefix : String
     getter admin_prefix : String
     getter recursion_limit : Int32
+    getter secure_cookies : Bool
     getter open_in_edit : Bool
     getter open_new_in_edit : Bool
     getter open_empty_in_edit : Bool
