@@ -1,6 +1,6 @@
 / - active = context.request.path == "/" ? "active" : ""
 / a class="nav-item #{active}" href="/" Home
-nav.navbar.navbar-light.bg-light.navbar-expand-lg
+nav.navbar.navbar-expand-lg.bg-body-tertiary
     a class="navbar-brand" href="#{Fluence::OPTIONS.homepage}"
       img.d-inline-block.align-top src="#{Fluence::OPTIONS.brand_logo}" alt="#{Fluence::OPTIONS.brand_info}"
       = Fluence::OPTIONS.brand

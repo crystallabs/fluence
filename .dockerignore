@@ -1,0 +1,7 @@
+.git
+bin
+lib
+data
+meta
+docs
+*.log

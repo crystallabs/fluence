@@ -92,8 +92,8 @@ class MediaController < ApplicationController
             new_name = page.name.sub /^#{old_main_page_name}/, params.body["input-page-name"]
             old_path = page.path
 
-            index.rename page, new_name
             page.rename! current_user, new_name, !!params.body["input-page-overwrite"]?
+            index.rename old_name, page
             Fluence::Media.remove_empty_directories old_path
           }
           flash["success success-#{old_name}"] = "Media #{old_name} has been renamed to #{page.name}"

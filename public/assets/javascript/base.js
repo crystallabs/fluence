@@ -6,6 +6,10 @@ var Fluence = {
 
 Fluence.mde_options = function(can_edit) {
 	options = {
+		// All assets are served locally; never let the editor pull
+		// Font Awesome or spell-checker dictionaries from a CDN.
+		autoDownloadFontAwesome: false,
+		spellChecker: false,
 		renderingConfig: { codeSyntaxHighlighting: true },
 		status: ["autosave", "lines", "words", "cursor"],
 		shortcuts: { drawTable: "Cmd-Alt-T", undo: "Cmd-Z", redo: "Cmd-Y" },
@@ -38,9 +42,9 @@ Fluence.mde_options = function(can_edit) {
 			"table",
 			"horizontal-rule",
 			"|",
-			{ name: "clean-block", action: InscrybMDE.cleanBlock, className: "fa fa-eraser fa-clean-block", title: "Clear formatting" },
-			{ name: "undo", action: InscrybMDE.undo, className: "fa fa-undo", title: "Undo" },
-			{ name: "redo", action: InscrybMDE.redo, className: "fa fa-redo", title: "Redo" }
+			{ name: "clean-block", action: EasyMDE.cleanBlock, className: "fa fa-eraser fa-clean-block", title: "Clear formatting" },
+			{ name: "undo", action: EasyMDE.undo, className: "fa fa-undo", title: "Undo" },
+			{ name: "redo", action: EasyMDE.redo, className: "fa fa-redo", title: "Redo" }
 		);
 	};
 	return options

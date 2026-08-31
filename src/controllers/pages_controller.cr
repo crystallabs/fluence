@@ -87,8 +87,8 @@ class PagesController < ApplicationController
             new_name = page.name.sub /^#{old_main_page_name}/, params.body["input-page-name"]
             old_path = page.path
 
-            index.rename page, new_name
             page.rename! current_user, new_name, !!params.body["input-page-overwrite"]?, subtree: false, intlinks: !!params.body["input-page-intlinks"]?
+            index.rename old_name, page
             Fluence::Page.remove_empty_directories old_path
           }
           flash["success success-#{old_name}"] = "Page '#{old_name}' has been renamed to '#{page.name}'"

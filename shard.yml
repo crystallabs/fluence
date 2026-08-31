@@ -24,3 +24,8 @@ dependencies:
   kilt:
     github: jeromegn/kilt
     version: ~> 0.6.1
+
+development_dependencies:
+  ameba:
+    github: crystal-ameba/ameba
+    version: ~> 1.6

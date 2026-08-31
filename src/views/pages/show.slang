@@ -215,7 +215,7 @@
                 .col
                   = groups_write.join ", "
 script
-  = "var editor = new InscrybMDE(Fluence.mde_options(#{writable}));"
+  = "var editor = new EasyMDE(Fluence.mde_options(#{writable}));"
   - if writable && ((!page.exists? && Fluence::OPTIONS.open_new_in_edit) || (page.exists? && (page.size==0) && Fluence::OPTIONS.open_empty_in_edit) || Fluence::OPTIONS.open_in_edit)
     = "editor.codemirror.focus();"
   - else

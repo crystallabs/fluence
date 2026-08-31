@@ -59,18 +59,27 @@ module Fluence
 
   # The list of pages with a lot of meta-data. Same behavior like
   # `USERS` and `ACL`.
-	PAGES = if ::File.exists? "#{Fluence::OPTIONS.metadir}/pages"
-		Fluence::Index(Fluence::Page).new("pages").load!
-	else
-		Fluence::Index(Fluence::Page).build("pages")
+	# An existing but empty index is rebuilt from disk contents: index files
+	# written by Fluence <= 0.6 were always empty due to a bug, and rebuilding
+	# also heals a manually truncated index.
+	PAGES = begin
+		idx = if ::File.exists? "#{Fluence::OPTIONS.metadir}/pages"
+			Fluence::Index(Fluence::Page).new("pages").load!
+		else
+			Fluence::Index(Fluence::Page).build("pages")
+		end
+		idx.entries.empty? ? Fluence::Index(Fluence::Page).build("pages") : idx
 	end
 
   # The list of media with a lot of meta-data. Same behavior like
   # `USERS` and `ACL`.
-	MEDIA = if ::File.exists? "#{Fluence::OPTIONS.metadir}/media"
-		Fluence::Index(Fluence::Media).new("media").load!
-	else
-		Fluence::Index(Fluence::Media).build("media")
+	MEDIA = begin
+		idx = if ::File.exists? "#{Fluence::OPTIONS.metadir}/media"
+			Fluence::Index(Fluence::Media).new("media").load!
+		else
+			Fluence::Index(Fluence::Media).build("media")
+		end
+		idx.entries.empty? ? Fluence::Index(Fluence::Media).build("media") : idx
 	end
 
 #	# Install file watcher on data files.

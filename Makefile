@@ -20,7 +20,7 @@ $(PROGRAM): $(PROGRAM_SOURCES) | $(OUT_DIR)
 $(OUT_DIR) $(INSTALL_DIR):
 	 @mkdir -p $@
 
-.PHONY: release run install link force_link clean distclean
+.PHONY: release run install link force_link clean distclean lint test
 
 release: $(PROGRAM_SOURCES) | $(OUT_DIR)
 	@echo "Building fluence for release in $(PROGRAM)"
@@ -47,5 +47,11 @@ clean:
 distclean:
 	rm -rf $(PROGRAM) .crystal .shards libs lib
 
+bin/ameba: | $(OUT_DIR)
+	@crystal build lib/ameba/src/cli.cr -o bin/ameba
+
+lint: bin/ameba
+	bin/ameba
+
 test:
-	crystal s
+	crystal spec

@@ -30,3 +30,6 @@ jobs:
 
       - name: Build
         run: crystal build src/fluence.cr --no-codegen
+
+      - name: Lint
+        run: make lint

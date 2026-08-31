@@ -1,17 +1,16 @@
-version: '2'
-
 services:
   web:
     build: .
     image: fluence
-    command: './bin/fluence'
-    working_dir: /app/user
-    environment:
     ports:
       - '3000:3000'
-    depends_on:
+    # Set WIKI_SECRET to keep sessions valid across restarts.
+    #environment:
+    #  WIKI_SECRET: change-me
     volumes:
-      - '.:/app/user'
+      - fluence-data:/app/data
+      - fluence-meta:/app/meta
 
 volumes:
-  db:
+  fluence-data:
+  fluence-meta:

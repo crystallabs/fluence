@@ -8,7 +8,7 @@ Elegant wiki powered by Crystal, with markdown as native format and a WYSIWYG ed
 
 It uses file-based storage versioned using Git. Wiki pages are created as files and directories on disk and they can be modified in Fluence or via filesystem directly.
 
-Fluence uses latest versions: Bootstrap 5.3.8, jQuery 3.7.1 slim, InscrybMDE 1.11.6.
+Fluence uses latest versions: Bootstrap 5.3.8, jQuery 3.7.1 slim, EasyMDE 2.20.0, Font Awesome 6.7.2, and highlight.js 11.11.1. All assets are served locally; pages make no requests to external CDNs.
 
 ## Installation and Startup
 
@@ -20,9 +20,15 @@ To download and compile Fluence, do:
 git clone https://github.com/crystallabs/fluence
 cd fluence
 shards
-bin/ameba      # Warnings reported here are non-critical
+make lint      # builds and runs ameba; should report no failures
 crystal spec
 make           # or 'make release'
+```
+
+Alternatively, build and run it with Docker:
+
+```bash
+docker compose up --build
 ```
 
 The result of the compilation will be one executable file &mdash; bin/fluence.

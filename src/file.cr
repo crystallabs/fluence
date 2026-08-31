@@ -70,7 +70,7 @@ abstract class Fluence::File
   # Writes into the *file*, and commit.
   def write(user : Fluence::User, body)
     jail!
-    Dir.mkdir_p self.directory
+    Dir.mkdir_p parent_directory
     ::File.write @path, body
     commit! user, exists? ? "update" : "create"
   end
@@ -95,21 +95,12 @@ abstract class Fluence::File
 
   # Save the modifications on the *file* into the git repository
   # TODO: lock before commit
-  # TODO: security of jail!ed_file and self.name ?
   def commit!(user : Fluence::User, message, other_files : Array(String) = [] of String)
-    dir = Dir.current
-    begin
-      Dir.cd Fluence::OPTIONS.datadir
-      all_files = @path + " " + other_files.join(" ")
-      puts `git add -- #{all_files}`
-      puts `git commit --no-gpg-sign --author \"#{user.name} <#{user.name}@localhost>\" -m \"#{message} #{@name}\" -- #{all_files}`
-    ensure
-      Dir.cd dir
-    end
-  end
-
-  def exists?
-    ::File.exists? @path
+    files = [@path] + other_files
+    Fluence::Git.run ["add", "--"] + files
+    Fluence::Git.run ["commit", "--no-gpg-sign",
+                      "--author", "#{user.name} <#{user.name}@localhost>",
+                      "-m", "#{message} #{@name}", "--"] + files
   end
 
   def self.sanitize(text : String)

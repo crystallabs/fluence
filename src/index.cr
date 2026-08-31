@@ -86,67 +86,53 @@ module Fluence
     end
 
     def [](page : T) : T
-      page = self[page]?
-      page ? page : raise Exception.new "Missing: '#{page.path}'"
+      self[page]? || raise Exception.new "Missing: '#{page.name}'"
     end
     def []?(page : T) : T?
-      ::File.exists?(page.path) ? page : nil
+      @entries[page.name]?
     end
 
     def []?(name : String) : T?
-      page = T.new name
-      self[page]?
+      self[T.new name]?
     end
     def [](name : String) : T
-      page = T.new name
-      self[page]
+      self[T.new name]
     end
 
-    # Writes page to disk. Does not commit to Git.
+    # Adds a `T` to the index, writing its content to disk if it carries any.
+    # Does not commit to Git and does not sync the index itself to disk;
+    # use inside `transaction!` for that.
     def add(page : T)
       page.jail!
       page.content.try do |content| ::File.write page.path, content end
+      @entries[page.name] = page
       self
     end
-    # Adds a new `T` into the index. This operation syncs new index contents to disk.
+    # Same as `add`; kept as the intent-revealing name used by controllers,
+    # which run it inside `transaction!` (which syncs the index to disk).
 		def add!(page : T)
 			add page
-			#commit! user, "update"
 			self
 		end
 
-    # Removes a T from Index. This is a memory-only operation and does not sync new index contents to disk.
+    # Removes a `T` from the index. This is a memory-only operation: the file
+    # itself is deleted (and committed to Git) by `Fluence::File#delete`.
 		# Recursive deletion is not handled here for now.
     def delete(page : T)
-      page.jail!
-      ::File.delete page.path
+      @entries.delete page.name
       self
     end
-    # Deletes a page from index. This operation syncs new index contents to disk.
-		# Recursive deletion is not handled here for now.
-		def delete!(page : T)
-			delete page
-			#commit! user, "delete"
-			self
-		end
 
-    # Renames `T` in index. This is a memory-only operation and does not sync new contents to disk.
+    # Re-keys the index entry from *old_name* to *page*'s current name.
+    # This is a memory-only operation: call it after the page itself has been
+    # successfully renamed on disk (`Fluence::File#rename!`), so a failed
+    # rename leaves the index untouched.
 		# Recursive renaming is not handled here for now.
-    def rename(page : T, new_name : String)
-      old = page
-      new = T.new new_name
-      old.jail!
-      new.jail!
-      ::File.rename old.path, new.path
-      {old, new}
+    def rename(old_name : String, page : T)
+      @entries.delete old_name
+      @entries[page.name] = page
+      self
     end
-    # Renames a page in index. This operation syncs new index contents to disk.
-		# Recursive renaming is not handled here for now.
-		def rename!(page : T)
-			old, new = rename page
-			#commit! user, new, other_files: old
-			self
-		end
 
 		def children1(page : T)
 			children1(page.name)
