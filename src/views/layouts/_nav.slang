@@ -4,14 +4,14 @@ nav.navbar.navbar-light.bg-light.navbar-expand-lg
     a class="navbar-brand" href="#{Fluence::OPTIONS.homepage}"
       img.d-inline-block.align-top src="#{Fluence::OPTIONS.brand_logo}" alt="#{Fluence::OPTIONS.brand_info}"
       = Fluence::OPTIONS.brand
-    button.navbar-toggler type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation"
+    button.navbar-toggler type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation"
       span.navbar-toggler-icon
 
     #navbarSupportedContent.collapse.navbar-collapse
-      ul.navbar-nav.mr-auto
+      ul.navbar-nav.me-auto
         li.nav-item.active
           a.nav-link href="#{Fluence::OPTIONS.homepage}" Home
-            span.sr-only (current)
+            span.visually-hidden (current)
         li.nav-item.active
           a.nav-link href="/sitemap" Sitemap
         - if Fluence::ACL.permitted?(current_user, "#{Fluence::OPTIONS.admin_prefix}/users", Acl::Perm::Read)
@@ -22,7 +22,7 @@ nav.navbar.navbar-light.bg-light.navbar-expand-lg
             a.nav-link href="#{Fluence::OPTIONS.admin_prefix}/acls" ACLs
       form#search-page.my-2.d-inline.w-50 action="#{Fluence::OPTIONS.pages_prefix}/search" method="get"
         .input-group
-          input.form-control.mr-sm-2 name="q" type="search" placeholder="Search" aria-label="Search" autocomplete="on"
+          input.form-control.me-sm-2 name="q" type="search" placeholder="Search" aria-label="Search" autocomplete="on"
           /      datalist#search-list
           /        - Fluence::PAGES.entries.values.each do |entry|
           /          option value=entry.url = entry.title

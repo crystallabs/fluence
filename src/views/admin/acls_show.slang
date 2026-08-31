@@ -7,22 +7,22 @@
         fieldset
           legend
             |ACL
-          .form-group.row
+          .mb-3.row
             label.col-2.col-form-label for="input_group_acl" Groups
             .col-10
               input.form-control id="input_group_acl" name="group" type="text"
-          .form-group.row.pt-2
+          .mb-3.row.pt-2
             label.col-2.col-form-label for="input_path_acl" Path
             .col-10
               input.form-control id="input_path_acl" name="path" type="text"
-          .form-group.row.pt-2
+          .mb-3.row.pt-2
             label.col-2.col-form-label for="input_permission_acl" Permission
             .col-10
               select.form-control id="input_permission_acl" name="perm" value="None" required="true" 
                 option value="none" None
                 option value="read" Read
                 option value="write" Write
-          .form-group.row.pt-2
+          .mb-3.row.pt-2
             input.form-control.btn.btn-md.btn-success name="create" type="submit" value="Create"
     .row-no-gutters.pt-3
       .container

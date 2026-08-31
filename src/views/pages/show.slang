@@ -112,7 +112,7 @@
                       }
                         else {
                           tag = new String(
-                          `<div class='row border-bottom'  data-toggle='tooltip' data-placement='top' title='${responseJSON.error}'>
+                          `<div class='row border-bottom'  data-bs-toggle='tooltip' data-bs-placement='top' title='${responseJSON.error}'>
                             <div class='col-9'>
                               <a class='list-group-item' href='#'>  ${name}  </a>
                             </div>
@@ -150,15 +150,15 @@
                        - if writable
                         button.btn.btn-sm.btn-danger.my-1 name="delete" value="Delete" type="submit" formaction="#{Fluence::OPTIONS.media_prefix}/#{page.name}/#{m.title || m.name}" onclick="return confirm('Really delete attachment `#{m.title || m.name}`?')" Delete
     .col
-      .row.no-gutters
+      .row.g-0
         - if Fluence::ACL.permitted? current_user, page.url, Acl::Perm::Write
           #page-content.col-12
             span Page Content
             .row
               .col
-                a.btn.btn-sm.btn-block.btn-success href="#" onclick="Fluence.editor.togglePreview()" id="button_toggle" white-space="normal" Preview
+                a.btn.btn-sm.w-100.btn-success href="#" onclick="Fluence.editor.togglePreview()" id="button_toggle" white-space="normal" Preview
               .col
-                button.btn.btn-sm.btn-block.btn-success name="save" id="button_save" type="submit" value="save" form="edit-page" visibility="hidden" Save
+                button.btn.btn-sm.w-100.btn-success name="save" id="button_save" type="submit" value="save" form="edit-page" visibility="hidden" Save
             hr
         - if page.exists?
           #page-toc.col-12
@@ -179,29 +179,28 @@
               span Page Management
                 form#manage-page method="post"
                   .input-group
-                    .input-group-prepend
-                      span class="input-group-text" id="label-page-name" Page name
+                    span.input-group-text id="label-page-name" Page name
                     input type="text" class="form-control" id="input-page-name" name="input-page-name" aria-describedby="label-page-name" value="#{page.name}"
                   .row.mt-2
                   .row
                     .col
-                      .form-group.form-check
+                      .mb-3.form-check
                        input type="checkbox" class="form-check-input" id="input-page-subtree" name="input-page-subtree"
                        label class="form-check-label" for="input-page-subtree" With subpages
                     .col
-                      .form-group.form-check
+                      .mb-3.form-check
                        input type="checkbox" class="form-check-input" id="input-page-intlinks" name="input-page-intlinks"
                        label class="form-check-label" for="input-page-intlinks" Update links
                     .col
-                      .form-group.form-check
+                      .mb-3.form-check
                        input type="checkbox" class="form-check-input" id="input-page-overwrite" name="input-page-overwrite"
                        label class="form-check-label" for="input-page-overwrite" Overwrite
                     .col
-                      button.btn.btn-sm.btn-block.btn-warning name="rename" type="submit" value="rename" form="manage-page" Rename
+                      button.btn.btn-sm.w-100.btn-warning name="rename" type="submit" value="rename" form="manage-page" Rename
                   .row
                     .col
                     .col
-                      button.btn.btn-sm.btn-block.btn-danger name="delete" type="submit" value="delete" form="manage-page" onclick="return confirm('Really delete page `#{page.name}`?')" Delete
+                      button.btn.btn-sm.w-100.btn-danger name="delete" type="submit" value="delete" form="manage-page" onclick="return confirm('Really delete page `#{page.name}`?')" Delete
               hr
             #page-permissions.col-12
               span Page Permissions

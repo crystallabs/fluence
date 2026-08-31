@@ -20,11 +20,9 @@ class Fluence::Page < Fluence::File
 
 	include YAML::Serializable
 
-	property path : String  # absolute path of the file, e.g. /srv/wiki/data/pages/xxx
-	property name : String  # name of the page, e.g. xxx or xxx/subpage1
-	property url : String   # real url of the page /pages/xxx
-	property title : String # Any title
-	property slug : String  # URL-friendly title
+	# path, name, url, and title are declared in Fluence::File and
+	# serialized here through YAML::Serializable's inherited-ivar walk.
+	property slug : String # URL-friendly title
 	property toc : Page::TableOfContent::Toc
 	property intlinks : Page::InternalLinks::LinkList
 	property modification_time : Time

@@ -1,4 +1,4 @@
-**Build status**: [![Build Status](https://travis-ci.com/crystallabs/fluence.svg?branch=master)](https://travis-ci.com/crystallabs/fluence)
+**Build status**: [![CI](https://github.com/crystallabs/fluence/actions/workflows/ci.yml/badge.svg)](https://github.com/crystallabs/fluence/actions/workflows/ci.yml)
 [![Version](https://img.shields.io/github/tag/crystallabs/fluence.svg?maxAge=360)](https://github.com/crystallabs/fluence/releases/latest)
 [![License](https://img.shields.io/github/license/crystallabs/fluence.svg)](https://github.com/crystallabs/fluence/blob/master/LICENSE)
 
@@ -8,7 +8,7 @@ Elegant wiki powered by Crystal, with markdown as native format and a WYSIWYG ed
 
 It uses file-based storage versioned using Git. Wiki pages are created as files and directories on disk and they can be modified in Fluence or via filesystem directly.
 
-Fluence uses latest versions: Bootstrap 4.4.0, jQuery 3.4.1 slim, InscrybMDE 1.11.6.
+Fluence uses latest versions: Bootstrap 5.3.8, jQuery 3.7.1 slim, InscrybMDE 1.11.6.
 
 ## Installation and Startup
 

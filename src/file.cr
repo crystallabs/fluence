@@ -17,16 +17,16 @@ abstract class Fluence::File
   end
 
   # Path of the file that contains the page
-  getter path : String
+  property path : String
 
   # Url of the page (without any prefix)
-  getter name : String
+  property name : String
 
   # Complete Url of the page
-  getter url : String
+  property url : String
 
   # Title of the page
-  getter title : String
+  property title : String
 
   @[YAML::Field(ignore: true)]
   getter content : String?

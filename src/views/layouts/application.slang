@@ -7,9 +7,8 @@ html lang="en"
     meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"
 
     link rel="stylesheet" href="/assets/stylesheet/bootstrap.min.css"
-    script src="/assets/javascript/jquery-3.4.1.slim.min.js"
-    script src="/assets/javascript/popper.min.js"
-    script src="/assets/javascript/bootstrap.min.js"
+    script src="/assets/javascript/jquery-3.7.1.slim.min.js"
+    script src="/assets/javascript/bootstrap.bundle.min.js"
     link rel="stylesheet" href="/assets/stylesheet/highlight.min.css"
     script src="/assets/javascript/highlight.min.js"
     link rel="stylesheet" href="/assets/stylesheet/inscrybmde.min.css"
@@ -30,8 +29,7 @@ html lang="en"
             - flash.each do |key, value|
               .col class="alert alert-#{key} alert-dismissible fade show" role="alert"
                 = flash[key]
-                button type="button" class="close" data-dismiss="alert" aria-label="Close"
-                  span aria-hidden="true" == "&times;"
+                button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"
               .w-100
       #main-content
         == content

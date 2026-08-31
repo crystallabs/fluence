@@ -7,19 +7,19 @@
         fieldset
           legend
             | Admin
-          .form-group.row
+          .mb-3.row
             label.col-2.col-form-label for="input_username" Username
             .col-10
               input.form-control id="input_username" name="username" type="text"
-          .form-group.row.pt-2
+          .mb-3.row.pt-2
             label.col-2.col-form-label for="input_password" Password
             .col-10
               input.form-control id="input_password" name="password" type="password"
-          .form-group.row.pt-2
+          .mb-3.row.pt-2
             label.col-2.col-form-label for="input_group" Groups
             .col-10
               input.form-control id="input_group" name="groups" type="text"
-          .form-group.row.pt-2
+          .mb-3.row.pt-2
             input.form-control.btn.btn-md.btn-success name="register" type="submit" value="Register"
   .row-no-gutters.pt-3
     .container
