@@ -113,14 +113,14 @@ class SpecClient
   end
 end
 
-# Headers and body of a fine-uploader-style multipart upload request.
+# Headers and body of a multipart upload request as sent by the
+# attachment form on a page (see MediaController#upload).
 def multipart_upload(page : String, filename : String, content : String) : {HTTP::Headers, String}
   io = IO::Memory.new
   boundary = MIME::Multipart.generate_boundary
   HTTP::FormData.build(io, boundary) do |form|
-    form.field "qqpagename", page
-    form.field "qqfilename", filename
-    form.file "qqfile", IO::Memory.new(content), HTTP::FormData::FileMetadata.new(filename: filename)
+    form.field "pagename", page
+    form.file "file", IO::Memory.new(content), HTTP::FormData::FileMetadata.new(filename: filename)
   end
   {HTTP::Headers{"Content-Type" => "multipart/form-data; boundary=#{boundary}"}, io.to_s}
 end

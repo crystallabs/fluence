@@ -1,10 +1,4 @@
 class MediaController < ApplicationController
-  # get /sitemap
-  def sitemap
-    acl_permit! :read
-    # See PagesController#sitemap, which covers media as well.
-  end
-
   # get /media/search?q=
   def search
     redirect_to "#{Fluence::OPTIONS.homepage}"
@@ -93,42 +87,43 @@ class MediaController < ApplicationController
   end
 
   # post /media/upload
+  #
+  # Multipart body with a "pagename" field (the page the attachment belongs
+  # to) followed by a "file" part. Returns JSON: {success, name, url} or
+  # {success, error}.
   def upload
-    data = {} of String => String
-
     @env.response.content_type = "application/json"
-    ret = {success: true}
+    pagename = ""
+    saved = nil
+    error = nil
 
     HTTP::FormData.parse(@env.request) do |part|
       case part.name
-      when "qqpagename"
-        data["qqpagename"] = part.body.gets_to_end
-        page_path = File.join Fluence::OPTIONS.pages_prefix, data["qqpagename"]
-        if !Fluence::ACL.permitted?(current_user, page_path, Acl::Perm::Write)
-          ret = {success: false, error: "You are not permitted to access this resource (#{page_path}, write)."}
+      when "pagename"
+        pagename = part.body.gets_to_end
+        page_path = File.join Fluence::OPTIONS.pages_prefix, pagename
+        unless Fluence::ACL.permitted?(current_user, page_path, Acl::Perm::Write)
+          error = "You are not permitted to access this resource (#{page_path}, write)."
         end
-      when "qqfilename"
-        if ret[:success]
-          data[part.name] = Fluence::Media.sanitize(part.body.gets_to_end).strip "/"
+      when "file"
+        next if error
+        filename = Fluence::Media.sanitize(part.filename.to_s).strip "/"
+        if pagename.empty? || filename.empty?
+          error = "Upload is missing the page name or file name."
+          next
         end
-      when "qqfile"
-        if ret[:success]
-          if !data["qqpagename"]
-            flash["danger"] = %Q(No data["qqpagename"] included in upload, please try again)
-            redirect_to Fluence::Page.new(data["qqpagename"]).url
-            return
-          else
-            media = Fluence::Media.new %Q(#{data["qqpagename"]}/#{data["qqfilename"]})
-            media.write current_user, part.body
-          end
-        end
-      else
-        if ret[:success]
-          data[part.name] = part.body.gets_to_end
-        end
+        media = Fluence::Media.new "#{pagename}/#{filename}"
+        media.write current_user, part.body
+        saved = media
       end
     end
 
-    ret.to_json
+    if error
+      {success: false, error: error}.to_json
+    elsif media = saved
+      {success: true, name: media.title || media.name, url: media.url}.to_json
+    else
+      {success: false, error: "No file was uploaded."}.to_json
+    end
   end
 end

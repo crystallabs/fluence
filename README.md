@@ -11,7 +11,7 @@ Content is stored in a Git repository, which is the single source of truth — F
 1. **Bare repository** (default for new installations): the data directory is a bare Git repository. Fluence reads from and commits to it directly, without any checkout. External contributions are made with regular Git tooling: `git clone` the data directory (or serve it over SSH/HTTP), edit, commit, and `git push` — pushed changes are visible in the wiki immediately.
 1. **Working tree** (used automatically for pre-0.7 data directories): the data directory is a normal checkout. Pages can also be created and edited directly on the filesystem, and such changes are likewise visible immediately. Set the environment variable `FLUENCE_STORAGE=worktree` before first startup to choose this mode for a new installation.
 
-Fluence uses latest versions: Bootstrap 5.3.8, jQuery 3.7.1 slim, EasyMDE 2.20.0, Font Awesome 6.7.2, and highlight.js 11.11.1. All assets are served locally; pages make no requests to external CDNs.
+Fluence uses latest versions: Bootstrap 5.3.8, EasyMDE 2.20.0, Font Awesome 6.7.2, and highlight.js 11.11.1. All assets are served locally; pages make no requests to external CDNs. No jQuery.
 
 ## Installation and Startup
 

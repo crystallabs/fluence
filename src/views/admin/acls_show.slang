@@ -63,16 +63,16 @@
                     input type="hidden" name="group" value=group.name
                     input type="hidden" name="path" value=path.to_s
                     button.btn.btn-xs.btn-info type="submit" name="change" value="read"
-                      Span Read
+                      span Read
                 .row.pt-2
                   form.col-6#admin-acl method="post" action="#{Fluence::OPTIONS.admin_prefix}/acls/update"
                     input type="hidden" name="group" value=group.name
                     input type="hidden" name="path" value=path.to_s
                     button.btn.btn-xs.btn-warning type="submit" name="change" value="none"
-                      Span None
+                      span None
                   form.col-6#admin-acl method="post" action="#{Fluence::OPTIONS.admin_prefix}/acls/delete"
                     input type="hidden" name="group" value=group.name
                     input type="hidden" name="path" value=path.to_s
                     button.btn.btn-xs.btn-danger type="submit" name="change" value="delete"
-                      Span Delete
+                      span Delete
             hr  

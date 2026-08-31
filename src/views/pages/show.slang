@@ -1,52 +1,4 @@
 - writable = Fluence::ACL.permitted? current_user, page.url, Acl::Perm::Write
-- if writable
-  script type="text/template" id="qq-template"
-          div class="qq-uploader-selector qq-uploader" qq-drop-area-text="Drop files here"
-              div class="qq-total-progress-bar-container-selector qq-total-progress-bar-container"
-                  div role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" class="qq-total-progress-bar-selector qq-progress-bar qq-total-progress-bar"
-              div class="qq-upload-drop-area-selector qq-upload-drop-area" qq-hide-dropzone=""
-                  span class="qq-upload-drop-area-text-selector"
-              div class="buttons"
-                  div class="qq-upload-button-selector btn btn-primary"
-                      div Select files
-                  button type="button" id="trigger-upload" class="btn btn-primary"
-                      i class="icon-upload icon-white"
-                      | Upload
-              span class="qq-drop-processing-selector qq-drop-processing"
-                  span Processing dropped files...
-                  span class="qq-drop-processing-spinner-selector qq-drop-processing-spinner"
-              ul class="qq-upload-list-selector qq-upload-list" aria-live="polite" aria-relevant="additions removals"
-                  li
-                      div class="qq-progress-bar-container-selector"
-                          div role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" class="qq-progress-bar-selector qq-progress-bar"
-                      span class="qq-upload-spinner-selector qq-upload-spinner"
-                      img class="qq-thumbnail-selector" qq-max-size="100" qq-server-scale=""
-                      span class="qq-upload-file-selector qq-upload-file"
-                      span class="qq-edit-filename-icon-selector qq-edit-filename-icon" aria-label="Edit filename"
-                      input class="qq-edit-filename-selector qq-edit-filename" tabindex="0" type="text"
-                      span class="qq-upload-size-selector qq-upload-size"
-                      button type="button" class="qq-btn qq-upload-cancel-selector qq-upload-cancel" Cancel
-                      button type="button" class="qq-btn qq-upload-retry-selector qq-upload-retry" Retry
-                      button type="button" class="qq-btn qq-upload-delete-selector qq-upload-delete" Delete
-                      span role="status" class="qq-upload-status-text-selector qq-upload-status-text"
-
-              dialog class="qq-alert-dialog-selector"
-                  div class="qq-dialog-message-selector"
-                  div class="qq-dialog-buttons"
-                      button type="button" class="qq-cancel-button-selector" Close
-
-              dialog class="qq-confirm-dialog-selector"
-                  div class="qq-dialog-message-selector"
-                  div class="qq-dialog-buttons"
-                      button type="button" class="qq-cancel-button-selector" No
-                      button type="button" class="qq-ok-button-selector" Yes
-
-              dialog class="qq-prompt-dialog-selector"
-                  div class="qq-dialog-message-selector"
-                  input type="text"
-                  div class="qq-dialog-buttons"
-                      button type="button" class="qq-cancel-button-selector" Cancel
-                      button type="button" class="qq-ok-button-selector" Ok
 .container-fluid
   .row
     .col
@@ -66,80 +18,12 @@
               == body_html
         .col-6
           span New Attachment
-            - if writable
-              div id="uploader"
-              javascript:
-                var uploader = new qq.FineUploader({
-                    element: document.getElementById("uploader"),
-                    request: {
-                        endpoint: '#{Fluence::OPTIONS.media_prefix}/upload',
-                        params: {
-                            qqpagename: '#{page.name}'
-                        }
-                    },
-                    debug: true,
-                    deleteFile: {
-                        enabled: true,
-                        endpoint: 'Fluence::OPTIONS.media_prefix/upload',
-                        params: {
-                            qqpagename: '#{page.name}'
-                        }
-                    },
-                    thumbnails: {
-                        placeholders: {
-                            waitingPath: '/assets/stylesheet/waiting-generic.png',
-                            notAvailablePath: '/assets/stylesheet/not_available-generic.png'
-                        }
-                    },
-                    autoUpload: false,
-                    callbacks: {
-                      onComplete: function(id, name, responseJSON){
-                        /*TODO:
-                          - 2 files with same name
-                          - paused files (this callback will return nothing if ALL files are not successfully uploaded, paused file will block it)
-                          - add if statements for succeeded array */
-                        var hook = '#{Fluence::OPTIONS.media_prefix}/#{page.name}/'
-                        var tag = new String()
-                        if (responseJSON.success){
-                          tag = new String(
-                          `<div class='row border-bottom'>
-                            <div class='col-9'>
-                              <a class='list-group-item' href='${hook + name}'>  ${name}  </a>
-                            </div>
-                              <div class='col-3'>
-                                <input class='form-control' name='media-name' value='${name}' type='hidden'>
-                                <button class='btn btn-sm btn-danger my-1' name='delete' value='Delete'   type='submit' formaction=${hook+name} onclick=\"return confirm('Really delete attachment ${name}?')\">
-                                  Delete
-                                </button>
-                              </div>
-                          </div>`)
-                      }
-                        else {
-                          tag = new String(
-                          `<div class='row border-bottom'  data-bs-toggle='tooltip' data-bs-placement='top' title='${responseJSON.error}'>
-                            <div class='col-9'>
-                              <a class='list-group-item' href='#'>  ${name}  </a>
-                            </div>
-                              <div class='col-3'>
-                                <p class='text-danger'>FAILED</p>
-                              </div>
-                          </div>`)
-                        }
-                        $('#attachments').append(tag);
-                      },
-                      onError: function(id,name,reason){
-                        console.log(reason);
-                      },
-                      onAllComplete: function(){
-                        this.clearStoredFiles();
-                      }
-                    }
-                });
-                qq(document.getElementById("trigger-upload")).attach("click", function() {
-                    uploader.uploadStoredFiles();
-                });
-            - else
-              p Insufficient permission to upload new attachments.
+          - if writable
+            form#upload action="#{Fluence::OPTIONS.media_prefix}/upload" method="post" enctype="multipart/form-data" data-pagename="#{page.name}" onsubmit="return Fluence.upload(this)"
+              input.form-control.form-control-sm.my-1 type="file" name="file" multiple="multiple" required="required"
+              button.btn.btn-sm.btn-primary type="submit" Upload
+          - else
+            p Insufficient permission to upload new attachments.
         .col-6
           span Attachments
             form#manage-attachments method="post"

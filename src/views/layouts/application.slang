@@ -7,7 +7,6 @@ html lang="en"
     meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"
 
     link rel="stylesheet" href="/assets/stylesheet/bootstrap.min.css"
-    script src="/assets/javascript/jquery-3.7.1.slim.min.js"
     script src="/assets/javascript/bootstrap.bundle.min.js"
     link rel="stylesheet" href="/assets/stylesheet/fontawesome.min.css"
     link rel="stylesheet" href="/assets/stylesheet/highlight.min.css"
@@ -16,8 +15,6 @@ html lang="en"
     script src="/assets/javascript/easymde.min.js"
     link rel="stylesheet" href="/assets/stylesheet/base.css"
     script src="/assets/javascript/base.js"
-    link rel="stylesheet" href="/assets/stylesheet/fine-uploader-new.min.css"
-    script src="/assets/javascript/fine-uploader.min.js"
 
   body
     #navbar
