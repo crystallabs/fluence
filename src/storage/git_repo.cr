@@ -23,6 +23,10 @@ module Fluence
       storage
     end
 
+    def git_directory : String
+      @repo
+    end
+
     def read(path : String) : String
       status, output = git ["cat-file", "blob", "HEAD:#{path}"]
       raise Error404.new "No such file: #{path}" unless status.success?

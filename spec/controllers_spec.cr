@@ -202,3 +202,60 @@ describe "session and cookie hardening" do
     (File.info(path).permissions.value & 0o077).should eq 0
   end
 end
+
+private def basic_auth(credentials : String) : HTTP::Headers
+  HTTP::Headers{"Authorization" => "Basic #{Base64.strict_encode(credentials)}"}
+end
+
+describe "git smart-HTTP access" do
+  it "authenticates with wiki credentials and authorizes via the ACL" do
+    with_each_storage do |_, _|
+      SpecClient.login "editor", "sekrit123" # ensures seed-admin and editor exist
+
+      # Anonymous: no ACL matches /repo for guests, so ask for credentials.
+      response = SpecClient.new.get "/repo/info/refs?service=git-upload-pack"
+      response.status_code.should eq 401
+      response.headers["WWW-Authenticate"].should contain "Basic"
+
+      # Wrong password.
+      response = SpecClient.new.get "/repo/info/refs?service=git-upload-pack",
+        basic_auth("editor:wrong")
+      response.status_code.should eq 401
+
+      # A registered user may fetch (Read via the default "/*" rule)...
+      response = SpecClient.new.get "/repo/info/refs?service=git-upload-pack",
+        basic_auth("editor:sekrit123")
+      response.status_code.should eq 200
+      response.headers["Content-Type"].should eq "application/x-git-upload-pack-advertisement"
+      response.body.should start_with "001e# service=git-upload-pack"
+
+      # ...but not push.
+      response = SpecClient.new.get "/repo/info/refs?service=git-receive-pack",
+        basic_auth("editor:sekrit123")
+      response.status_code.should eq 401
+
+      # An admin may push.
+      response = SpecClient.new.get "/repo/info/refs?service=git-receive-pack",
+        basic_auth("seed-admin:seed-password")
+      response.status_code.should eq 200
+      response.body.should start_with "001f# service=git-receive-pack"
+
+      # Requests without ?service= are the unsupported dumb protocol.
+      response = SpecClient.new.get "/repo/info/refs", basic_auth("editor:sekrit123")
+      response.status_code.should eq 403
+    end
+  end
+
+  it "serves anonymous fetch when guests are granted Read on the repo" do
+    with_each_storage do |_, _|
+      Fluence::ACL["guest"]["#{Fluence::OPTIONS.repo_prefix}/*"] = Acl::Perm::Read
+      begin
+        response = SpecClient.new.get "/repo/info/refs?service=git-upload-pack"
+        response.status_code.should eq 200
+        response.body.should start_with "001e# service=git-upload-pack"
+      ensure
+        Fluence::ACL["guest"].delete "#{Fluence::OPTIONS.repo_prefix}/*"
+      end
+    end
+  end
+end

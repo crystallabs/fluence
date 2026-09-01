@@ -25,6 +25,11 @@ Router.get "#{Fluence::OPTIONS.media_prefix}/*path", MediaController, :show
 Router.post "#{Fluence::OPTIONS.media_prefix}/*path", MediaController, :update
 Router.post "#{Fluence::OPTIONS.media_prefix}/upload", MediaController, :upload
 
+# Git smart HTTP protocol: clone/fetch/push against the wiki repository.
+Router.get "#{Fluence::OPTIONS.repo_prefix}/info/refs", GitController, :info_refs
+Router.post "#{Fluence::OPTIONS.repo_prefix}/git-upload-pack", GitController, :upload_pack
+Router.post "#{Fluence::OPTIONS.repo_prefix}/git-receive-pack", GitController, :receive_pack
+
 Router.get "#{Fluence::OPTIONS.users_prefix}/login", UsersController, :login
 Router.post "#{Fluence::OPTIONS.users_prefix}/login", UsersController, :login_validates
 Router.get "#{Fluence::OPTIONS.users_prefix}/register", UsersController, :register

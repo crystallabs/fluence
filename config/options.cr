@@ -35,6 +35,12 @@ module Fluence
       @users_prefix = "/users"
       @admin_prefix = "/admin"
 
+      # URL through which the wiki repository is served over the git smart
+      # HTTP protocol, e.g. `git clone http://wiki.host:3000/repo`.
+      # Fetching requires Read and pushing requires Write permission on
+      # this path (see README, "Git access over HTTP").
+      @repo_prefix = "/repo"
+
       # Recursion limit for any recursive functions
       @recursion_limit = 1000
 
@@ -76,6 +82,7 @@ module Fluence
     getter media_prefix : String
     getter users_prefix : String
     getter admin_prefix : String
+    getter repo_prefix : String
     getter recursion_limit : Int32
     getter secure_cookies : Bool
     property registration : String

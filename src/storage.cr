@@ -79,6 +79,11 @@ module Fluence
     # without the marker) for files under *prefix* that have one.
     abstract def headings(prefix : String) : Hash(String, String)
 
+    # The directory to hand to git commands that take a repository argument
+    # (`git upload-pack <dir>`, `git receive-pack <dir>`): the bare
+    # repository itself, or the root of the working tree.
+    abstract def git_directory : String
+
     # Environment for git commands: pins the committer identity so no host
     # or repository git configuration is required, and sets the author to
     # the acting wiki user.

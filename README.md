@@ -8,7 +8,7 @@ Elegant wiki powered by Crystal, with markdown as native format and a WYSIWYG ed
 
 Content is stored in a Git repository, which is the single source of truth — Fluence keeps no cache or index that can go stale. Two storage modes are supported and auto-detected:
 
-1. **Bare repository** (default for new installations): the data directory is a bare Git repository. Fluence reads from and commits to it directly, without any checkout. External contributions are made with regular Git tooling: `git clone` the data directory (or serve it over SSH/HTTP), edit, commit, and `git push` — pushed changes are visible in the wiki immediately.
+1. **Bare repository** (default for new installations): the data directory is a bare Git repository. Fluence reads from and commits to it directly, without any checkout. External contributions are made with regular Git tooling — Fluence itself serves the repository over HTTP (see "Git access over HTTP" below), so `git clone` the wiki URL, edit, commit, and `git push` — pushed changes are visible in the wiki immediately.
 1. **Working tree** (used automatically for pre-0.7 data directories): the data directory is a normal checkout. Pages can also be created and edited directly on the filesystem, and such changes are likewise visible immediately. Set the environment variable `FLUENCE_STORAGE=worktree` before first startup to choose this mode for a new installation.
 
 Fluence uses latest versions: Bootstrap 5.3.8, EasyMDE 2.20.0, Font Awesome 6.7.2, and highlight.js 11.11.1. All assets are served locally; pages make no requests to external CDNs. No jQuery.
@@ -58,6 +58,23 @@ There are no files or directories required to pre-exist for Fluence to work. The
 There is no index or cache: listings, titles, internal-link resolution, and search always operate on the current repository contents, so nothing can go out of sync. (The `meta/pages` and `meta/media` index files written by Fluence <= 0.6 are no longer used and can be deleted.)
 
 Page content is GitHub Flavored Markdown (tables, strikethrough, autolinks, emoji). Links between pages are ordinary markdown links — `[Title](/pages/name)`, or a target relative to the current page such as `[Title](sibling)`. The `[[wikilink]]` syntax of earlier versions is no longer interpreted; to convert existing content once, start Fluence with `FLUENCE_MIGRATE_WIKILINKS=1` — it rewrites all affected pages to standard links, commits them, and exits.
+
+## Git access over HTTP
+
+Fluence serves the wiki repository over the git smart HTTP protocol at `/repo`, so no separate git hosting is needed:
+
+```bash
+git clone http://username@wiki.host:3000/repo
+cd repo
+# edit pages/*.md, add media/, commit...
+git push
+```
+
+Authentication is HTTP Basic with the wiki username and password (git prompts for it, and credential helpers work as usual). Authorization uses the regular ACL, checked against the `/repo` URL: fetching/cloning requires **Read**, pushing requires **Write**. With the default ACLs of a fresh install this means any registered user can clone and pull, admins can also push, and anonymous users have no git access. To change that, add ACL rules on the path `/repo/*` — for example give the `user` group Write on `/repo/*` to let all registered users push, or the `guest` group Read on `/repo/*` to allow anonymous cloning.
+
+Note that git access is all-or-nothing per operation: a clone contains the entire repository and its full history, and a push can modify any page or media file. Per-page ACL rules (such as a `None` rule hiding `/pages/private/*` from some group) are enforced by the wiki UI, but not within git transfers — grant Read/Write on `/repo/*` only to groups that may see and change everything.
+
+Both storage modes accept pushes. In bare mode (the default), pushed commits are simply added to the repository. In working-tree mode, a push also updates the checkout (via git's `receive.denyCurrentBranch=updateInstead`); a push is refused while the checkout has uncommitted changes. Concurrent wiki edits are safe in both modes: wiki commits advance HEAD with compare-and-swap, so a simultaneous push and wiki edit cannot silently overwrite each other.
 
 
 

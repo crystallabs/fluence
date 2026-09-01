@@ -19,6 +19,10 @@ module Fluence
       storage
     end
 
+    def git_directory : String
+      @root
+    end
+
     def read(path : String) : String
       ::File.read abs(path)
     rescue ::File::NotFoundError
