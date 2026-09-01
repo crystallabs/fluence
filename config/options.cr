@@ -41,9 +41,6 @@ module Fluence
       # this path (see README, "Git access over HTTP").
       @repo_prefix = "/repo"
 
-      # Recursion limit for any recursive functions
-      @recursion_limit = 1000
-
       # Self-registration mode: "open" (anyone can register) or "closed"
       # (only admins can add users, through the admin interface).
       # Regardless of the mode, the first user to register becomes admin.
@@ -83,7 +80,6 @@ module Fluence
     getter users_prefix : String
     getter admin_prefix : String
     getter repo_prefix : String
-    getter recursion_limit : Int32
     getter secure_cookies : Bool
     property registration : String
 

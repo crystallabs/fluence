@@ -53,7 +53,7 @@ class MediaController < ApplicationController
 
         main_page.rename! current_user, new_main_name, !!params.body["input-page-overwrite"]?
         flash["success success-#{old_name}"] = "Media #{old_name} has been renamed to #{main_page.name}"
-      rescue e : Fluence::Media::AlreadyExists
+      rescue e : Fluence::Media::AlreadyExists | Fluence::Error409
         flash["danger danger-#{main_page.name}"] = e.to_s
         redirect_to old_url
         return
@@ -113,8 +113,12 @@ class MediaController < ApplicationController
           next
         end
         media = Fluence::Media.new "#{pagename}/#{filename}"
-        media.write current_user, part.body
-        saved = media
+        begin
+          media.write current_user, part.body
+          saved = media
+        rescue e : Fluence::Error409
+          error = e.message
+        end
       end
     end
 

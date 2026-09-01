@@ -1,5 +1,27 @@
 require "./spec_helper"
 
+# Simulates a concurrent `git push`: for the first *stale_reads* calls,
+# `head` reports a stale commit, so the final compare-and-swap in commit
+# loses against the repository's real HEAD.
+private class StaleHeadRepo < Fluence::Storage::GitRepo
+  property stale : String?
+  property stale_reads = 0
+
+  private def head : String?
+    if (stale = @stale) && @stale_reads > 0
+      @stale_reads -= 1
+      return stale
+    end
+    super
+  end
+end
+
+private def rev_parse_head(repo : String) : String
+  output = IO::Memory.new
+  Process.run("git", ["rev-parse", "HEAD"], env: {"GIT_DIR" => repo}, output: output)
+  output.to_s.strip
+end
+
 describe Fluence::Storage do
   it "performs the full content lifecycle on each backend" do
     with_each_storage do |storage, kind|
@@ -61,6 +83,37 @@ describe Fluence::Storage do
       storage.write "pages/a.md", "same\n", SPEC_USER, "create a"
       storage.write "pages/a.md", "same\n", SPEC_USER, "identical write"
       git_log(storage).lines.size.should eq 1
+    end
+  end
+
+  it "retries once when HEAD moves concurrently, and raises Error409 when it keeps moving" do
+    dir = File.tempname("fluence-spec-cas")
+    begin
+      Fluence::Storage::GitRepo.init(dir)
+      storage = StaleHeadRepo.new(dir)
+      storage.write "pages/a.md", "# A\n", SPEC_USER, "create a"
+      stale = rev_parse_head(storage.repo)
+
+      # An external push lands after the wiki last saw HEAD...
+      Fluence::Storage::GitRepo.new(dir).write "pages/b.md", "# B\n", SPEC_USER, "external push"
+
+      # ...so the first commit attempt CAS-fails; the retry succeeds and
+      # neither the pushed change nor the wiki write is lost.
+      storage.stale = stale
+      storage.stale_reads = 1
+      storage.write "pages/c.md", "# C\n", SPEC_USER, "create c"
+      storage.stale_reads.should eq 0
+      storage.read("pages/b.md").should eq "# B\n"
+      storage.read("pages/c.md").should eq "# C\n"
+
+      # If HEAD is stale on the retry too, the conflict surfaces as Error409.
+      storage.stale = stale
+      storage.stale_reads = 99
+      expect_raises(Fluence::Error409) do
+        storage.write "pages/d.md", "# D\n", SPEC_USER, "create d"
+      end
+    ensure
+      FileUtils.rm_rf dir
     end
   end
 end

@@ -53,29 +53,37 @@ module Fluence
 
     def write(path : String, content : String | IO, user : Fluence::User, message : String)
       @lock.synchronize do
+        # Hash outside the retry: an IO body can only be read once, and the
+        # blob is valid regardless of which commit it ends up in.
         blob = hash_object content
-        commit(user, message) do |index_env|
-          git! ["update-index", "--add", "--cacheinfo", "100644,#{blob},#{path}"], env: index_env
+        retrying_conflict do
+          commit(user, message) do |index_env|
+            git! ["update-index", "--add", "--cacheinfo", "100644,#{blob},#{path}"], env: index_env
+          end
         end
       end
     end
 
     def delete(path : String, user : Fluence::User, message : String)
       @lock.synchronize do
-        raise Error404.new "No such file: #{path}" unless exists? path
-        commit(user, message) do |index_env|
-          index_remove path, index_env
+        retrying_conflict do
+          raise Error404.new "No such file: #{path}" unless exists? path
+          commit(user, message) do |index_env|
+            index_remove path, index_env
+          end
         end
       end
     end
 
     def rename(old_path : String, new_path : String, user : Fluence::User, message : String)
       @lock.synchronize do
-        status, blob = git ["rev-parse", "HEAD:#{old_path}"]
-        raise Error404.new "No such file: #{old_path}" unless status.success?
-        commit(user, message) do |index_env|
-          index_remove old_path, index_env
-          git! ["update-index", "--add", "--cacheinfo", "100644,#{blob.strip},#{new_path}"], env: index_env
+        retrying_conflict do
+          status, blob = git ["rev-parse", "HEAD:#{old_path}"]
+          raise Error404.new "No such file: #{old_path}" unless status.success?
+          commit(user, message) do |index_env|
+            index_remove old_path, index_env
+            git! ["update-index", "--add", "--cacheinfo", "100644,#{blob.strip},#{new_path}"], env: index_env
+          end
         end
       end
     end
@@ -141,7 +149,8 @@ module Fluence
     # index, yields so the caller can mutate it with update-index, then
     # writes the tree and advances HEAD. A mutation that leaves the tree
     # unchanged produces no commit. HEAD is advanced with compare-and-swap,
-    # so a concurrent external push fails the update instead of being lost.
+    # so a concurrent external push raises `Error409` instead of being lost
+    # (`retrying_conflict` then re-runs the whole build on the new HEAD).
     private def commit(user : Fluence::User, message : String, &)
       base = head
       index_file = ::File.tempname("fluence-index")
@@ -156,7 +165,7 @@ module Fluence
         yield index_env
 
         tree = git!(["write-tree"], env: index_env).strip
-        if base && tree == git!(["rev-parse", "HEAD^{tree}"]).strip
+        if base && tree == git!(["rev-parse", "#{base}^{tree}"]).strip
           return # nothing changed
         end
 
@@ -164,14 +173,24 @@ module Fluence
         args += ["-p", base] if base
         new_commit = git!(args, env: git_env(user)).strip
 
-        if base
-          git! ["update-ref", "HEAD", new_commit, base]
-        else
-          git! ["update-ref", "HEAD", new_commit]
-        end
+        # The zero oid as the expected old value asserts the ref must not
+        # exist yet, so an unborn HEAD is a compare-and-swap too.
+        status, _ = git ["update-ref", "HEAD", new_commit, base || ZERO_OID]
+        raise Error409.new unless status.success?
       ensure
         ::File.delete? index_file
       end
+    end
+
+    ZERO_OID = "0" * 40
+
+    # Runs the block, retrying it once if the final compare-and-swap in
+    # `#commit` loses against a concurrent push; the second failure in a
+    # row propagates `Error409` to the caller.
+    private def retrying_conflict(&)
+      yield
+    rescue Error409
+      yield
     end
   end
 end
