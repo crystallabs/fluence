@@ -28,6 +28,11 @@ class ApplicationController
   def title
     Fluence::OPTIONS.brand_info
   end
+
+  # CSS classes of a navbar link: the link to the current page is active.
+  def nav_link_class(href : String) : String
+    request.path == href ? "nav-link active" : "nav-link"
+  end
 end
 
 require "./**"

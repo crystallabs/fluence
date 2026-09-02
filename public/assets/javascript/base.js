@@ -50,16 +50,43 @@ Fluence.mde_options = function(can_edit) {
 	return options
 }
 
+// Switches the editor between preview and edit mode. Save and the change
+// summary only make sense while editing, so they are hidden in preview.
 Fluence.editor.togglePreview = function(){
 	editor.togglePreview();
 	Fluence.editor.isPreviewActive = !Fluence.editor.isPreviewActive;
-	if (Fluence.editor.isPreviewActive){
-		document.getElementById("button_toggle").textContent = "Edit";
-	}
-	else{
-		document.getElementById("button_toggle").textContent = "Preview";
-		editor.codemirror.focus();
-	}
+	var editing = !Fluence.editor.isPreviewActive;
+	document.getElementById("button_toggle").textContent = editing ? "Preview" : "Edit";
+	document.getElementById("button_save").hidden = !editing;
+	document.getElementById("input-summary").hidden = !editing;
+	if (editing) editor.codemirror.focus();
+}
+
+// Click handler of an attachment's Delete button: deletes over fetch and
+// removes the row without reloading the page. The button's form action is
+// the attachment URL; the server answers JSON when asked for it.
+Fluence.deleteAttachment = function(button, name) {
+	if (!confirm("Really delete attachment `" + name + "`?")) return false;
+	var row = button.closest(".row");
+	fetch(button.formAction, {
+		method: "POST",
+		headers: { "Accept": "application/json" },
+		body: new URLSearchParams({ "delete": "Delete", "media-name": name })
+	})
+		.then(function(response) { return response.json(); })
+		.then(function(result) {
+			if (result.success)
+				row.remove();
+			else
+				Fluence.markRowFailed(row, result.error);
+		})
+		.catch(function(error) { Fluence.markRowFailed(row, String(error)); });
+	return false;
+}
+
+Fluence.markRowFailed = function(row, error) {
+	row.classList.add("text-danger");
+	row.title = error || "Delete failed";
 }
 
 // Submit handler of the attachment form on a page: uploads each selected
@@ -106,7 +133,7 @@ Fluence.attachmentRow = function(name, url) {
 	button.formAction = url;
 	button.textContent = "Delete";
 	button.onclick = function() {
-		return confirm("Really delete attachment `" + name + "`?");
+		return Fluence.deleteAttachment(button, name);
 	};
 
 	var right = row.lastElementChild;

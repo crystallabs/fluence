@@ -9,17 +9,20 @@ nav.navbar.navbar-expand-lg.bg-body-tertiary
 
     #navbarSupportedContent.collapse.navbar-collapse
       ul.navbar-nav.me-auto
-        li.nav-item.active
-          a.nav-link href="#{Fluence::OPTIONS.homepage}" Home
-            span.visually-hidden (current)
-        li.nav-item.active
-          a.nav-link href="/sitemap" Sitemap
+        - home_class = nav_link_class Fluence::OPTIONS.homepage
+        li.nav-item
+          a class=home_class href="#{Fluence::OPTIONS.homepage}" Home
+        - sitemap_class = nav_link_class "/sitemap"
+        li.nav-item
+          a class=sitemap_class href="/sitemap" Sitemap
         - if Fluence::ACL.permitted?(current_user, "#{Fluence::OPTIONS.admin_prefix}/users", Acl::Perm::Read)
-          li.nav-item.active
-            a.nav-link href="#{Fluence::OPTIONS.admin_prefix}/users" Users
+          - users_class = nav_link_class "#{Fluence::OPTIONS.admin_prefix}/users"
+          li.nav-item
+            a class=users_class href="#{Fluence::OPTIONS.admin_prefix}/users" Users
         - if Fluence::ACL.permitted?(current_user, "#{Fluence::OPTIONS.admin_prefix}/acls", Acl::Perm::Read)
-          li.nav-item.active
-            a.nav-link href="#{Fluence::OPTIONS.admin_prefix}/acls" ACLs
+          - acls_class = nav_link_class "#{Fluence::OPTIONS.admin_prefix}/acls"
+          li.nav-item
+            a class=acls_class href="#{Fluence::OPTIONS.admin_prefix}/acls" ACLs
       form#search-page.my-2.d-inline.w-50 action="#{Fluence::OPTIONS.pages_prefix}/search" method="get"
         .input-group
           input.form-control.me-sm-2 name="q" type="search" placeholder="Search" aria-label="Search" autocomplete="on"
@@ -32,11 +35,13 @@ nav.navbar.navbar-expand-lg.bg-body-tertiary
           li.navbar-text
             span | Logged in as
               = current_user.name
-          li.nav-item.active
+          li.nav-item
             a.nav-link href="#{Fluence::OPTIONS.users_prefix}/logout" (Logout)
         - else
-          li.nav-item.active
-            a.nav-link href="#{Fluence::OPTIONS.users_prefix}/login" | Login
+          - login_class = nav_link_class "#{Fluence::OPTIONS.users_prefix}/login"
+          - register_class = nav_link_class "#{Fluence::OPTIONS.users_prefix}/register"
+          li.nav-item
+            a class=login_class href="#{Fluence::OPTIONS.users_prefix}/login" | Login
             - if Fluence::OPTIONS.registration_open?
               li.navbar-text or
-              a.nav-link.active href="#{Fluence::OPTIONS.users_prefix}/register" Register
+              a class=register_class href="#{Fluence::OPTIONS.users_prefix}/register" Register

@@ -360,3 +360,56 @@ describe "static assets" do
     end
   end
 end
+
+describe "editor conveniences over HTTP" do
+  it "prefills a new page with a heading and honours ?edit and ?view" do
+    with_each_storage do |_, _|
+      client = SpecClient.login "editor", "sekrit123"
+      body = client.get("/pages/docs/my-new-page").body
+      body.should contain "# My New Page"
+      body.should contain "editor.codemirror.focus();"
+
+      client.post "/pages/docs/my-new-page", {"body" => "# Saved\n"}
+      body = client.get("/pages/docs/my-new-page").body
+      body.should_not contain "# My New Page"
+      body.should contain "Fluence.editor.togglePreview();"
+      client.get("/pages/docs/my-new-page?edit").body.should contain "editor.codemirror.focus();"
+      client.get("/pages/docs/other-page?view").body.should contain "Fluence.editor.togglePreview();"
+
+      SpecClient.new.get("/pages/docs/other-page").body.should_not contain "# Other Page"
+    end
+  end
+
+  it "marks the current section active in the navbar" do
+    response = SpecClient.new.get "/sitemap"
+    response.body.should contain %(<a class="nav-link active" href="/sitemap">Sitemap</a>)
+    response.body.should contain %(<a class="nav-link" href="#{Fluence::OPTIONS.homepage}">Home</a>)
+  end
+end
+
+describe "attachment deletion over HTTP" do
+  it "answers JSON when asked, otherwise redirects back to the page" do
+    with_each_storage do |_, _|
+      client = SpecClient.login "editor", "sekrit123"
+      client.post "/pages/att", {"body" => "# Att\n"}
+      Fluence::Media.new("att/a.txt").write SPEC_USER, "A"
+      Fluence::Media.new("att/b.txt").write SPEC_USER, "B"
+
+      headers = HTTP::Headers{"Content-Type" => "application/x-www-form-urlencoded", "Accept" => "application/json"}
+      response = client.request "POST", "/media/att/a.txt", headers,
+        URI::Params.encode({"delete" => "Delete", "media-name" => "a.txt"})
+      response.status_code.should eq 200
+      response.body.should eq %({"success":true})
+      Fluence::Media.new("att/a.txt").exists?.should be_false
+
+      response = client.post "/media/att/b.txt", {"delete" => "Delete", "media-name" => "b.txt"}
+      response.status_code.should eq 302
+      response.headers["Location"].should eq "/pages/att"
+      Fluence::Media.new("att/b.txt").exists?.should be_false
+
+      Fluence::Media.new("att/c.txt").write SPEC_USER, "C"
+      SpecClient.new.post("/media/att/c.txt", {"delete" => "Delete", "media-name" => "c.txt"}).status_code.should eq 302
+      Fluence::Media.new("att/c.txt").exists?.should be_true
+    end
+  end
+end

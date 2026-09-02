@@ -40,6 +40,8 @@ Run this file and visit [http://localhost:3000/](http://localhost:3000/) in your
 
 To configure Fluence, please do so in `config/options.cr`. After changing the options, you need to rebuild Fluence.
 
+Whether a page opens in edit or preview mode is governed by the `open_*_in_edit` options; a link can override this for a single visit with `?edit` or `?view` appended to the page URL.
+
 ## Example
 
 Here is how it currently looks:

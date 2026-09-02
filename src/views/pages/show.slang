@@ -1,4 +1,3 @@
-- writable = Fluence::ACL.permitted? current_user, page.url, Acl::Perm::Write
 .container-fluid
   .row
     .col
@@ -36,7 +35,7 @@
                     .col-3
                       input.form-control type="hidden" name="media-name" value="#{m.title || m.name}"
                        - if writable
-                        button.btn.btn-sm.btn-danger.my-1 name="delete" value="Delete" type="submit" formaction="#{Fluence::OPTIONS.media_prefix}/#{page.name}/#{m.title || m.name}" onclick="return confirm('Really delete attachment `#{m.title || m.name}`?')" Delete
+                        button.btn.btn-sm.btn-danger.my-1 name="delete" value="Delete" type="submit" formaction="#{Fluence::OPTIONS.media_prefix}/#{page.name}/#{m.title || m.name}" onclick="return Fluence.deleteAttachment(this, '#{m.title || m.name}')" Delete
     .col
       .row.g-0
         - if Fluence::ACL.permitted? current_user, page.url, Acl::Perm::Write
@@ -46,7 +45,7 @@
               .col
                 a.btn.btn-sm.w-100.btn-success href="#" onclick="Fluence.editor.togglePreview()" id="button_toggle" white-space="normal" Preview
               .col
-                button.btn.btn-sm.w-100.btn-success name="save" id="button_save" type="submit" value="save" form="edit-page" visibility="hidden" Save
+                button.btn.btn-sm.w-100.btn-success name="save" id="button_save" type="submit" value="save" form="edit-page" Save
             input.form-control.form-control-sm.mt-2 type="text" name="summary" id="input-summary" form="edit-page" placeholder="Change summary (optional)" maxlength="500" autocomplete="off"
             hr
         - if page.exists?
@@ -113,7 +112,7 @@
 script
   - if writable
     = "var editor = new EasyMDE(Fluence.mde_options(true));"
-    - if (!page.exists? && Fluence::OPTIONS.open_new_in_edit) || (page.exists? && (page.size==0) && Fluence::OPTIONS.open_empty_in_edit) || Fluence::OPTIONS.open_in_edit
+    - if open_in_edit
       = "editor.codemirror.focus();"
     - else
       = "Fluence.editor.togglePreview();"

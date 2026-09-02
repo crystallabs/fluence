@@ -47,6 +47,12 @@ class Fluence::Page < Fluence::File
 		path.lchop("pages/").chomp(".md")
 	end
 
+	# Content a new page starts with in the editor: a heading made from the
+	# last component of the name ("docs/my-page" -> "# My Page").
+	def default_content : String
+		"# #{::File.basename(@name).split('-').map(&.capitalize).join(' ')}\n\n"
+	end
+
 	# Pages take their display title from their first markdown heading.
 	def self.titled?
 		true

@@ -62,18 +62,36 @@ class MediaController < ApplicationController
     redirect_to main_page.url
   end
 
-  private def update_delete(main_page)
+  # Deletes the attachment. Answers JSON ({success} or {success, error})
+  # when the client asks for it (Accept: application/json), as the
+  # attachment list on a page does; otherwise redirects back to the page
+  # the attachment belongs to.
+  private def update_delete(media)
+    error = nil
     unless params.body["media-name"]?.to_s.strip.empty?
       begin
-        main_page.delete current_user if main_page.exists?
-        flash["success success-#{main_page.name}"] = "Media #{main_page.name} has been deleted"
+        media.delete current_user if media.exists?
       rescue e
-        flash["danger danger-#{main_page.name}"] = e.to_s
-        redirect_to main_page.url
-        return
+        error = e.to_s
       end
     end
-    redirect_to "#{Fluence::OPTIONS.homepage}"
+
+    if request.headers["Accept"]?.try &.includes?("application/json")
+      @env.response.content_type = "application/json"
+      return (error ? {success: false, error: error} : {success: true}).to_json
+    end
+    if error
+      flash["danger danger-#{media.name}"] = error
+    else
+      flash["success success-#{media.name}"] = "Media #{media.name} has been deleted"
+    end
+    redirect_to owner_page_url(media)
+  end
+
+  # URL of the page an attachment ("<page name>/<file name>") belongs to.
+  private def owner_page_url(media) : String
+    dir = ::File.dirname media.name
+    dir == "." ? Fluence::OPTIONS.homepage : "#{Fluence::OPTIONS.pages_prefix}/#{dir}"
   end
 
   private def update_edit(page)

@@ -74,6 +74,9 @@ class PagesController < ApplicationController
     body_html = Fluence::Markdown.to_html body
     last_commit = page.exists? ? page.history(1).first? : nil
     Fluence::ACL.load!
+    writable = Fluence::ACL.permitted? current_user, page.url, Acl::Perm::Write
+    body = page.default_content if writable && !page.exists?
+    open_in_edit = open_in_edit? page
 
     if !page.exists?
       flash["info"] = "The page '#{page.name}' does not exist yet."
@@ -84,7 +87,7 @@ class PagesController < ApplicationController
       end
     end
 
-    groups_read = Fluence::ACL.groups_having_any_access_to page.url, Acl::Perm::Read, true
+    groups_read = Fluence::ACL.groups_having_any_access_to page.url, Acl::Perm::Read
     groups_write = Fluence::ACL.groups_having_any_access_to page.url, Acl::Perm::Write, true
     title = "#{page.title} - #{title()}"
 
@@ -92,6 +95,18 @@ class PagesController < ApplicationController
     pages = Fluence::PAGES.children1
 
     render "show.slang"
+  end
+
+  # Whether the editor opens in edit mode (as opposed to preview) for
+  # *page*: the ?edit and ?view query parameters decide, otherwise the
+  # open_*_in_edit options do.
+  private def open_in_edit?(page) : Bool
+    return true if params.query.has_key? "edit"
+    return false if params.query.has_key? "view"
+    options = Fluence::OPTIONS
+    options.open_in_edit ||
+      (!page.exists? && options.open_new_in_edit) ||
+      (page.exists? && page.size == 0 && options.open_empty_in_edit)
   end
 
   # post /pages/*path
