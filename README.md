@@ -36,6 +36,8 @@ docker compose up --build
 
 The result of the compilation will be one executable file &mdash; bin/fluence.
 
+Prebuilt static Linux binaries (x86_64 and aarch64) are attached to every [release](https://github.com/crystallabs/fluence/releases) as `fluence-<version>-linux-<arch>.tar.gz`, together with the `public/` assets directory. Unpack the archive and run `./fluence` from the unpacked directory; `git` must be installed on the host.
+
 Run this file and visit [http://localhost:3000/](http://localhost:3000/) in your browser.
 
 To configure Fluence, please do so in `config/options.cr`. After changing the options, you need to rebuild Fluence.

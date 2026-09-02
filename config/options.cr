@@ -26,9 +26,11 @@ module Fluence
       # Directory of static assets (stylesheets, scripts, logo), served at
       # the site root. Defaults to the public/ directory of the source tree
       # Fluence was compiled from, so the binary can be started from any
-      # working directory; override with FLUENCE_PUBLICDIR when the tree
-      # is not available at runtime.
-      @publicdir = ::File.expand_path ENV.fetch("FLUENCE_PUBLICDIR", ::File.join(__DIR__, "..", "public"))
+      # working directory. When that tree is not available at runtime (e.g.
+      # a binary from a release tarball), the public/ directory next to the
+      # executable is used, then public/ in the working directory. Override
+      # with FLUENCE_PUBLICDIR.
+      @publicdir = ::File.expand_path ENV.fetch("FLUENCE_PUBLICDIR") { default_publicdir }
 
       # Visible part of URL through which pages are accessed, e.g. /pages/my_page
       @pages_prefix = "/pages"
@@ -103,6 +105,17 @@ module Fluence
     getter open_in_edit : Bool
     getter open_new_in_edit : Bool
     getter open_empty_in_edit : Bool
+
+    # First existing candidate for the static assets directory, or the source
+    # tree's public/ if none exists, so the error names the expected path.
+    private def default_publicdir : String
+      source = ::File.join(__DIR__, "..", "public")
+      candidates = [source, "public"]
+      if exe = Process.executable_path
+        candidates.insert 1, ::File.join(::File.dirname(exe), "public")
+      end
+      candidates.find(source) { |dir| ::Dir.exists? dir }
+    end
   end
 
   OPTIONS = Fluence::Options.new
