@@ -4,15 +4,23 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to build and attach the archives to (empty builds the current ref without attaching)
+        required: false
+        default: ""
 
 permissions:
   contents: write
+
+env:
+  CRYSTAL_IMAGE: crystallang/crystal:1.21.0-alpine
+  TAG: ${{ github.event.release.tag_name || inputs.tag }}
 
 jobs:
   build:
     name: Build linux-${{ matrix.arch }}
     runs-on: ${{ matrix.runner }}
-    container: crystallang/crystal:1.21.0-alpine
     strategy:
       fail-fast: false
       matrix:
@@ -24,20 +32,25 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG || github.ref }}
 
-      - name: Install dependencies
-        run: shards install --production
-
+      # The build runs in the Crystal Alpine image via docker so that the
+      # binary is fully static, independent of the runner's architecture
+      # (Alpine containers cannot host GitHub's JavaScript actions on arm64).
       - name: Build static binary
         run: |
-          mkdir -p bin
-          crystal build --release --static -o bin/fluence src/fluence.cr
+          docker run --rm -v "$PWD:/app" -w /app "$CRYSTAL_IMAGE" sh -ec '
+            shards install --production
+            mkdir -p bin
+            crystal build --release --static -o bin/fluence src/fluence.cr
+          '
+          sudo chown -R "$(id -u):$(id -g)" bin lib
 
       - name: Package
         id: package
         run: |
-          version="${{ github.event.release.tag_name }}"
-          version="${version:-v$(sed -n 's/^version: *//p' shard.yml)}"
+          version="${TAG:-v$(sed -n 's/^version: *//p' shard.yml)}"
           name="fluence-${version}-linux-${{ matrix.arch }}"
           mkdir "$name"
           cp bin/fluence README.md LICENSE "$name/"
@@ -56,9 +69,10 @@ jobs:
           if-no-files-found: error
 
       - name: Attach to release
-        if: github.event_name == 'release'
+        if: env.TAG != ''
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.TAG }}
           files: |
             ${{ steps.package.outputs.name }}.tar.gz
             ${{ steps.package.outputs.name }}.tar.gz.sha256
