@@ -439,3 +439,30 @@ describe "page menu over HTTP" do
     end
   end
 end
+
+describe "save and continue over HTTP" do
+  it "answers JSON when asked, otherwise redirects back into the editor" do
+    with_each_storage do |storage, _|
+      client = SpecClient.login "editor", "sekrit123"
+
+      headers = HTTP::Headers{"Content-Type" => "application/x-www-form-urlencoded", "Accept" => "application/json"}
+      response = client.request "POST", "/pages/draft", headers,
+        URI::Params.encode({"body" => "# Draft\nstep one\n", "summary" => "First step", "continue" => "1"})
+      response.status_code.should eq 200
+      response.body.should eq %({"success":true,"title":"Draft"})
+      Fluence::Page.new("draft").read.should eq "# Draft\nstep one\n"
+      storage.log("pages/draft.md")[0].body.should eq "First step"
+
+      response = client.post "/pages/draft", {"body" => "# Draft\nstep two\n", "continue" => "1"}
+      response.status_code.should eq 302
+      response.headers["Location"].should eq "/pages/draft?edit"
+
+      response = client.post "/pages/draft", {"body" => "# Draft\nstep three\n"}
+      response.headers["Location"].should eq "/pages/draft"
+
+      response = SpecClient.new.request "POST", "/pages/draft", headers, URI::Params.encode({"body" => "# Defaced\n"})
+      response.status_code.should eq 302
+      Fluence::Page.new("draft").read.should eq "# Draft\nstep three\n"
+    end
+  end
+end

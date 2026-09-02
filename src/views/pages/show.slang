@@ -7,6 +7,9 @@
       .row
         .col-12
           - if writable
+            .alert.alert-warning.py-2#draft-notice role="alert" hidden="hidden"
+              | The editor shows an unsaved draft of this page from an earlier visit. Save it, or
+              button.btn.btn-sm.btn-outline-secondary.ms-2 type="button" onclick="Fluence.editor.discardDraft()" Discard draft
             form#edit-page.invisible method="post"
               fieldset
                 textarea.form-control name="body" = body
@@ -41,7 +44,11 @@
           .d-flex.gap-2
             button.btn.btn-sm.btn-outline-success.flex-fill type="button" id="button_toggle" onclick="Fluence.editor.togglePreview()" Preview
             button.btn.btn-sm.btn-success.flex-fill name="save" id="button_save" type="submit" value="save" form="edit-page" Save
-          input.form-control.form-control-sm.mt-2 type="text" name="summary" id="input-summary" form="edit-page" placeholder="Change summary (optional)" maxlength="500" autocomplete="off"
+          #edit-extras
+            input.form-control.form-control-sm.mt-2 type="text" name="summary" id="input-summary" form="edit-page" placeholder="Change summary (optional)" maxlength="500" autocomplete="off"
+            .d-flex.align-items-center.gap-2.mt-2
+              button.btn.btn-sm.btn-outline-success.text-nowrap name="continue" value="1" type="submit" form="edit-page" onclick="return Fluence.editor.saveAndContinue(this.form)" Save and continue
+              span.small.text-body-secondary#save-status
       - if page.exists?
         section#page-history-link
           h6.section-title History

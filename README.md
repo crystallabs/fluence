@@ -42,6 +42,8 @@ To configure Fluence, please do so in `config/options.cr`. After changing the op
 
 Whether a page opens in edit or preview mode is governed by the `open_*_in_edit` options; a link can override this for a single visit with `?edit` or `?view` appended to the page URL.
 
+While editing, unsaved changes are kept as a draft in the browser (localStorage, per page) and restored on the next visit to the page, with a notice offering to discard them; saving the page clears the draft. "Save and continue" saves the page without leaving the editor, so long edits can be committed in steps. Nothing is written to the wiki repository until the page is saved.
+
 ## Example
 
 Here is how it currently looks:

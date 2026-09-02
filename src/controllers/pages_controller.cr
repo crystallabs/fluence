@@ -187,14 +187,29 @@ class PagesController < ApplicationController
     redirect_to "#{Fluence::OPTIONS.homepage}"
   end
 
+  # Saves the page body. Answers JSON ({success} or {success, error}) when
+  # the client asks for it (Accept: application/json), as "Save & continue"
+  # does; otherwise redirects to the page, reopening the editor when the
+  # form was submitted with "continue".
   private def update_edit(page)
     action = page.exists? ? "updated" : "created"
-    page.update! current_user, params.body["body"], params.body["summary"]?
-    flash["success"] = %Q(Page '#{page.name}' has been #{action})
-    redirect_to page.url
-  rescue err
-    flash["danger"] = "Error: cannot update #{page.name}, #{err.message}"
-    redirect_to page.url
+    error = nil
+    begin
+      page.update! current_user, params.body["body"], params.body["summary"]?
+    rescue err
+      error = "Error: cannot update #{page.name}, #{err.message}"
+    end
+
+    if request.headers["Accept"]?.try &.includes?("application/json")
+      @env.response.content_type = "application/json"
+      return (error ? {success: false, error: error} : {success: true, title: page.title}).to_json
+    end
+    if error
+      flash["danger"] = error
+    else
+      flash["success"] = %Q(Page '#{page.name}' has been #{action})
+    end
+    redirect_to params.body["continue"]? ? "#{page.url}?edit" : page.url
   end
 
   # get /sitemap

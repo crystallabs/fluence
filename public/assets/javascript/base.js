@@ -9,13 +9,69 @@ var editor;
 
 // Creates the page editor in edit or preview mode, then reveals the form
 // (hidden until now so the mode switch happens out of sight).
+//
+// A draft left by an earlier visit is restored by EasyMDE; the editor then
+// opens in edit mode behind a notice offering to discard it. A draft equal
+// to the saved page is dropped silently, and no draft is kept until the
+// content is actually changed, so the notice appears only for real edits.
 Fluence.editor.init = function(open_in_edit) {
+	var saved = document.querySelector("#edit-page textarea").value;
 	editor = new EasyMDE(Fluence.mde_options(true));
+	var draft = editor.options.autosave.foundSavedValue === true;
+	if (draft && editor.value() === saved)
+		draft = false;
+	if (!draft)
+		Fluence.editor.dropDraft();
+	else {
+		open_in_edit = true;
+		document.getElementById("draft-notice").hidden = false;
+	}
 	if (open_in_edit)
 		editor.codemirror.focus();
 	else
 		Fluence.editor.togglePreview();
 	document.getElementById("edit-page").classList.remove("invisible");
+}
+
+// Removes the stored draft, including one EasyMDE is about to write, and
+// the "Autosaved" note in the status bar that went with it.
+Fluence.editor.dropDraft = function() {
+	clearTimeout(editor._autosave_timeout);
+	editor.clearAutosavedValue();
+	var note = document.querySelector(".editor-statusbar .autosave");
+	if (note) note.textContent = "";
+}
+
+// "Discard draft" on the notice: forget the draft and reload the saved page.
+Fluence.editor.discardDraft = function() {
+	Fluence.editor.dropDraft();
+	location.replace(location.pathname + "?edit");
+}
+
+// "Save and continue": saves over fetch and keeps editing, with cursor,
+// scroll position, and mode intact. The server answers JSON when asked
+// for it. Returns false so the button does not submit the form (without
+// JavaScript the same button submits normally and the editor reopens).
+Fluence.editor.saveAndContinue = function(form) {
+	var summary = document.getElementById("input-summary");
+	var status = document.getElementById("save-status");
+	status.textContent = "Saving…";
+	fetch(form.action, {
+		method: "POST",
+		headers: { "Accept": "application/json" },
+		body: new URLSearchParams({ "body": editor.value(), "summary": summary.value, "continue": "1" })
+	})
+		.then(function(response) { return response.json(); })
+		.then(function(result) {
+			if (result.success) {
+				Fluence.editor.dropDraft();
+				summary.value = "";
+				status.textContent = "Saved " + new Date().toLocaleTimeString();
+			} else
+				status.textContent = "Not saved: " + (result.error || "unknown error");
+		})
+		.catch(function(error) { status.textContent = "Not saved: " + error; });
+	return false;
 }
 
 Fluence.mde_options = function(can_edit) {
@@ -27,7 +83,10 @@ Fluence.mde_options = function(can_edit) {
 		renderingConfig: { codeSyntaxHighlighting: true },
 		status: ["autosave", "lines", "words", "cursor"],
 		shortcuts: { drawTable: "Cmd-Alt-T", undo: "Cmd-Z", redo: "Cmd-Y" },
-		autosave: { enabled: false, delay: 2000, uniqueId: 1},
+		// Unsaved edits are kept as a draft in the browser's localStorage,
+		// keyed by page path, and restored on the next visit (see
+		// Fluence.editor.init); saving the page discards the draft.
+		autosave: { enabled: true, delay: 3000, uniqueId: location.pathname },
 		// Do not use placeholder because it only shows in Edit mode,
 		// and it is not needed there.
 		//placeholder: "Please enter Edit mode to add content",
@@ -72,7 +131,7 @@ Fluence.editor.togglePreview = function(){
 	var editing = !Fluence.editor.isPreviewActive;
 	document.getElementById("button_toggle").textContent = editing ? "Preview" : "Edit";
 	document.getElementById("button_save").hidden = !editing;
-	document.getElementById("input-summary").hidden = !editing;
+	document.getElementById("edit-extras").hidden = !editing;
 	if (editing) editor.codemirror.focus();
 }
 
