@@ -33,8 +33,9 @@ nav.navbar.navbar-expand-lg.bg-body-tertiary
       ul.navbar-nav.mx-auto
         - if user_signed_in?
           li.navbar-text
-            span | Logged in as
-              = current_user.name
+            | Logged in as
+            - settings_class = nav_link_class "#{Fluence::OPTIONS.users_prefix}/settings"
+            a class="#{settings_class} d-inline p-0 ms-1" href="#{Fluence::OPTIONS.users_prefix}/settings" title="Settings" = current_user.name
           li.nav-item
             a.nav-link href="#{Fluence::OPTIONS.users_prefix}/logout" (Logout)
         - else

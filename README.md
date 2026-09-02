@@ -71,6 +71,14 @@ Every change made through the wiki is a git commit whose subject names the actio
 
 Each page links to its history (`/pages/<name>?history`): the list of commits that touched it, following renames. Every revision can be viewed as it was (`?rev=<commit>`) and its changes shown as a diff (`?diff=<commit>`); users with write permission on the page can restore any revision, which saves its content as a new commit. The history views live under the page's own URL, so the page's ACL applies to them.
 
+## Pages by title
+
+Besides its name, every page can be reached through its title at `/titles/<slug>`, where the slug is the title (or the last component of the name) lowercased with runs of non-alphanumeric characters replaced by `-`. When several pages share a title, say `alice/calendar`, `bob/calendar`, and `carol/calendar`, the URL `/titles/calendar` shows them one after another, each under a link to the page itself; only pages the visitor may read are included. Fresh installs grant guests read access to `/titles/*`; on an existing installation add that ACL rule to open the view to anonymous visitors.
+
+## User settings
+
+Logged-in users have a settings page (their name in the navigation bar, or `/users/settings`) with preferences that are stored in `meta/users` and apply from any browser: whether pages open in edit or view mode (or follow the site's `open_*_in_edit` options), whether the editor starts in side-by-side preview and/or fullscreen, the delay before the editor stores a draft in the browser (0 disables drafts), and the color scheme (light, dark, or the browser's preference).
+
 Renaming a page moves its attachments (`media/<name>/...`) along with it in the same commit and rewrites the page's links to them; with "Update links" checked, links in other pages to the page and to its attachments are rewritten too.
 
 ## Git access over HTTP

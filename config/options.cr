@@ -38,6 +38,11 @@ module Fluence
       # Visible part of URL through which media is accessed, e.g. /media/my_page/my_file1.pdf
       @media_prefix = "/media"
 
+      # URL through which pages are looked up by title rather than by name,
+      # e.g. /titles/calendar shows every page titled "Calendar" (or named
+      # .../calendar), concatenated when there is more than one.
+      @titles_prefix = "/titles"
+
       # Location of users and admin interfaces
       @users_prefix = "/users"
       @admin_prefix = "/admin"
@@ -85,6 +90,7 @@ module Fluence
     getter homepage : String
     getter pages_prefix : String
     getter media_prefix : String
+    getter titles_prefix : String
     getter users_prefix : String
     getter admin_prefix : String
     getter repo_prefix : String

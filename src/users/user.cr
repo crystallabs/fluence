@@ -1,5 +1,6 @@
 require "crypto/bcrypt/password"
 require "../acl/entity"
+require "./settings"
 
 # A `User` consists of name/password/groups/token.
 # The *name* and *groups* is public, the *password* and the *token* are private.
@@ -15,6 +16,7 @@ class Fluence::User
   property password : String
   property groups : Array(String)
   property token : String?
+  property settings : Settings = Settings.new
 
   # ```
   # User.new "admin", "password", %w(admin user)

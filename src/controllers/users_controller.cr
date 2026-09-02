@@ -56,6 +56,35 @@ class UsersController < ApplicationController
     end
   end
 
+  # get /users/settings
+  def settings
+    return unless signed_in!
+    acl_permit! :read
+    settings = current_user.settings
+    title = "Settings - #{title()}"
+    render "settings.slang"
+  end
+
+  # post /users/settings
+  def settings_update
+    return unless signed_in!
+    acl_permit! :read
+    name = current_user.name
+    Fluence::USERS.transaction!(read: true) { |users| users[name].settings.update! params.body }
+    flash["success"] = "Your settings have been saved."
+    redirect_to "#{Fluence::OPTIONS.users_prefix}/settings"
+  end
+
+  # False, with a redirect to the login page queued, unless a user is
+  # logged in.
+  private def signed_in!
+    uses_login_cookies
+    return true if user_signed_in?
+    flash["info"] = "Please log in to change your settings."
+    redirect_to "#{Fluence::OPTIONS.users_prefix}/login"
+    false
+  end
+
   # False, with a flash and a redirect queued, when self-registration
   # is closed (FLUENCE_REGISTRATION=closed).
   private def registration_open!

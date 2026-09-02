@@ -97,11 +97,15 @@ class PagesController < ApplicationController
   end
 
   # Whether the editor opens in edit mode (as opposed to preview) for
-  # *page*: the ?edit and ?view query parameters decide, otherwise the
-  # open_*_in_edit options do.
+  # *page*: the ?edit and ?view query parameters decide, then the user's
+  # editor_mode setting, otherwise the open_*_in_edit options.
   private def open_in_edit?(page) : Bool
     return true if params.query.has_key? "edit"
     return false if params.query.has_key? "view"
+    case current_user.settings.editor_mode
+    when "edit" then return true
+    when "view" then return false
+    end
     options = Fluence::OPTIONS
     options.open_in_edit ||
       (!page.exists? && options.open_new_in_edit) ||
@@ -222,19 +226,58 @@ class PagesController < ApplicationController
   end
 
   # get /pages/search?q=
+  #
+  # Searches page names, titles, and content, and attachment names and
+  # (text) content; each result is subject to the requester's read ACL.
   def search
     acl_permit! :read
     query = params.query["q"]?.to_s.strip
     results = [] of Fluence::Page
+    media_results = [] of Fluence::Media
     unless query.empty?
       results = Fluence::PAGES.search(query).compact_map do |name|
         page = Fluence::Page.new name
         next unless Fluence::ACL.permitted?(current_user, page.url, Acl::Perm::Read)
         page.process!
       end
+      media_results = Fluence::MEDIA.search(query).compact_map do |name|
+        media = Fluence::Media.new name
+        next unless Fluence::ACL.permitted?(current_user, media.url, Acl::Perm::Read)
+        media.process!
+      end
     end
     title = "Search - #{title()}"
     render "search.slang"
+  end
+
+  # The page an attachment ("<page name>/<file name>") belongs to; nil
+  # for media stored outside any page's directory.
+  private def owner_page(media : Fluence::Media) : Fluence::Page?
+    dir = ::File.dirname media.name
+    dir == "." ? nil : Fluence::Page.new(dir)
+  end
+
+  # get /titles/*slug
+  #
+  # Pages looked up by title: every readable page whose title (or name's
+  # last component) slugifies to *slug*. A single match redirects to the
+  # page; several are shown one after another, so that e.g. each team
+  # member's ".../calendar" page appears together on /titles/calendar.
+  def titles
+    acl_permit! :read
+    slug = Fluence::Page.sanitize(params.url["slug"].to_s).strip "/"
+    pages = Fluence::PAGES.with_slug(slug).select do |page|
+      Fluence::ACL.permitted?(current_user, page.url, Acl::Perm::Read)
+    end
+    if pages.size == 1
+      redirect_to pages.first.url
+      return
+    end
+    @env.response.status_code = 404 if pages.empty?
+    sections = pages.map { |page| {page, Fluence::Markdown.to_html(page.read)} }
+    tree = page_tree
+    title = "Pages titled '#{slug}' - #{title()}"
+    render "titles.slang"
   end
 
   private def subtree_of(page)

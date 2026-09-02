@@ -21,7 +21,7 @@ ul, ol {
   font-size: .75rem;
   text-transform: uppercase;
   letter-spacing: .06em;
-  color: #6c757d;
+  color: var(--bs-secondary-color);
   margin: 0 0 .35rem;
 }
 
@@ -33,7 +33,7 @@ ul, ol {
   display: inline-block;
   width: 1rem;
   flex: 0 0 1rem;
-  color: #6c757d;
+  color: var(--bs-secondary-color);
   text-decoration: none;
 }
 .page-tree .tree-toggle::before {
@@ -63,9 +63,18 @@ ul, ol {
 
 /* Sidebar sections on page views. */
 #sidebar section + section {
-  border-top: 1px solid #dee2e6;
+  border-top: 1px solid var(--bs-border-color);
   margin-top: .75rem;
   padding-top: .6rem;
+}
+
+/* The editor's "table" button carries the class "table", which Bootstrap
+   styles as a full-width table; give it back its button dimensions. */
+.editor-toolbar button.table {
+  width: auto;
+  margin-bottom: 0;
+  vertical-align: baseline;
+  color: inherit;
 }
 
 /* In preview mode only the mode buttons remain in the editor toolbar. */
@@ -75,29 +84,29 @@ ul, ol {
 }
 
 /* Server-rendered page content shown to readers. */
-#page-body {
+#page-body, .page-body {
   padding: 10px 20px;
 }
 
-#page-body table {
+#page-body table, .page-body table {
   border-collapse: collapse;
   margin-bottom: 1rem;
 }
 
-#page-body th, #page-body td {
-  border: 1px solid #dee2e6;
+#page-body th, .page-body th, #page-body td, .page-body td {
+  border: 1px solid var(--bs-border-color);
   padding: .3rem .6rem;
 }
 
-#page-body blockquote {
-  border-left: 4px solid #dee2e6;
+#page-body blockquote, .page-body blockquote {
+  border-left: 4px solid var(--bs-border-color);
   padding-left: .75rem;
-  color: #6c757d;
+  color: var(--bs-secondary-color);
 }
 
-#page-body pre {
+#page-body pre, .page-body pre {
   padding: .5rem;
-  background: #f8f9fa;
+  background: var(--bs-tertiary-bg);
 }
 
 a:not([href*="//"]) {
@@ -162,11 +171,56 @@ a[href*="//"] {
 /* Unified diffs on the page history views. */
 pre.diff {
   padding: .5rem;
-  background: #f8f9fa;
+  background: var(--bs-tertiary-bg);
   overflow-x: auto;
 }
 pre.diff span { display: block; }
 pre.diff .diff-add { background: #e6ffec; color: #116329; }
 pre.diff .diff-del { background: #ffebe9; color: #82071e; }
 pre.diff .diff-hunk { color: #6f42c1; }
-pre.diff .diff-meta { color: #6c757d; }
+pre.diff .diff-meta { color: var(--bs-secondary-color); }
+
+/* Dark color scheme (data-bs-theme on <html>, from the user's settings):
+   the editor, its preview, and code highlighting follow the Bootstrap
+   theme colors. */
+[data-bs-theme="dark"] pre.diff .diff-add { background: #12261e; color: #7ee787; }
+[data-bs-theme="dark"] pre.diff .diff-del { background: #3a1214; color: #ffa198; }
+[data-bs-theme="dark"] pre.diff .diff-hunk { color: #d2a8ff; }
+[data-bs-theme="dark"] .CodeMirror,
+[data-bs-theme="dark"] .EasyMDEContainer .CodeMirror-fullscreen,
+[data-bs-theme="dark"] .editor-preview,
+[data-bs-theme="dark"] .editor-preview-side {
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  border-color: var(--bs-border-color);
+}
+[data-bs-theme="dark"] .CodeMirror-cursor { border-left-color: var(--bs-body-color); }
+[data-bs-theme="dark"] .CodeMirror-selected,
+[data-bs-theme="dark"] .CodeMirror-focused .CodeMirror-selected { background: var(--bs-secondary-bg); }
+[data-bs-theme="dark"] .editor-toolbar,
+[data-bs-theme="dark"] .editor-toolbar.fullscreen,
+[data-bs-theme="dark"] .editor-statusbar {
+  background: var(--bs-tertiary-bg);
+  color: var(--bs-body-color);
+  border-color: var(--bs-border-color);
+}
+[data-bs-theme="dark"] .editor-toolbar.fullscreen::before,
+[data-bs-theme="dark"] .editor-toolbar.fullscreen::after { background: none; }
+[data-bs-theme="dark"] .editor-toolbar button { color: var(--bs-body-color); }
+[data-bs-theme="dark"] .editor-toolbar button.active,
+[data-bs-theme="dark"] .editor-toolbar button:hover {
+  background: var(--bs-secondary-bg);
+  border-color: var(--bs-border-color);
+}
+[data-bs-theme="dark"] .editor-toolbar i.separator { border-color: var(--bs-border-color); }
+[data-bs-theme="dark"] .editor-preview pre,
+[data-bs-theme="dark"] .editor-preview-side pre,
+[data-bs-theme="dark"] .cm-s-easymde .cm-comment { background: var(--bs-tertiary-bg); }
+[data-bs-theme="dark"] .cm-s-easymde .cm-link,
+[data-bs-theme="dark"] .cm-s-easymde .cm-quote { color: var(--bs-secondary-color); }
+[data-bs-theme="dark"] .cm-s-easymde .cm-url { color: var(--bs-tertiary-color); }
+[data-bs-theme="dark"] .cm-s-easymde .cm-string { color: #a5d6ff; }
+[data-bs-theme="dark"] .hljs {
+  background: var(--bs-tertiary-bg);
+  color: var(--bs-body-color);
+}

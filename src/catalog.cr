@@ -109,6 +109,16 @@ module Fluence
       {text, "#{context.url_prefix}/#{slug}"}
     end
 
+    # Entries whose title, or the last component of whose name, slugifies
+    # to *slug*, ordered by name and carrying their titles.
+    def with_slug(slug : String) : Array(T)
+      titles_map = titles
+      names = titles_map.keys.select do |n|
+        T.title_to_slug(titles_map[n]) == slug || T.title_to_slug(::File.basename(n)) == slug
+      end
+      names.sort.map { |n| entry_with_title n, titles_map }
+    end
+
     # Returns names matching *query* (case-insensitive) in their name,
     # title, or content.
     def search(query : String) : Array(String)

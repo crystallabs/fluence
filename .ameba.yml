@@ -59,6 +59,7 @@ Lint/UnusedExpression:
 Lint/UselessAssign:
   Excluded:
   - src/controllers/admin_controller.cr
+  - src/controllers/users_controller.cr
   - src/controllers/helpers/page.cr
   - src/controllers/pages_controller.cr
 

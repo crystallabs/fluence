@@ -21,6 +21,8 @@ Router.get "#{Fluence::OPTIONS.pages_prefix}/search", PagesController, :search
 Router.get "#{Fluence::OPTIONS.pages_prefix}/*path", PagesController, :show
 Router.post "#{Fluence::OPTIONS.pages_prefix}/*path", PagesController, :update
 
+Router.get "#{Fluence::OPTIONS.titles_prefix}/*slug", PagesController, :titles
+
 Router.get "#{Fluence::OPTIONS.media_prefix}/*path", MediaController, :show
 Router.post "#{Fluence::OPTIONS.media_prefix}/*path", MediaController, :update
 Router.post "#{Fluence::OPTIONS.media_prefix}/upload", MediaController, :upload
@@ -35,6 +37,8 @@ Router.post "#{Fluence::OPTIONS.users_prefix}/login", UsersController, :login_va
 Router.get "#{Fluence::OPTIONS.users_prefix}/register", UsersController, :register
 Router.post "#{Fluence::OPTIONS.users_prefix}/register", UsersController, :register_validates
 Router.get "#{Fluence::OPTIONS.users_prefix}/logout", UsersController, :logout
+Router.get "#{Fluence::OPTIONS.users_prefix}/settings", UsersController, :settings
+Router.post "#{Fluence::OPTIONS.users_prefix}/settings", UsersController, :settings_update
 
 Router.get "#{Fluence::OPTIONS.admin_prefix}#{Fluence::OPTIONS.users_prefix}", AdminController, :users_show
 Router.post "#{Fluence::OPTIONS.admin_prefix}#{Fluence::OPTIONS.users_prefix}/create", AdminController, :user_create

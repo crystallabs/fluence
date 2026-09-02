@@ -1,7 +1,12 @@
 doctype html
-html lang="en"
+- theme = current_user.settings.theme
+- theme_attr = theme == "auto" ? nil : theme
+html lang="en" data-bs-theme=theme_attr
   head
     title = title
+    - if theme == "auto"
+      script
+        | document.documentElement.setAttribute("data-bs-theme", matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
     meta charset="utf-8"
     meta http-equiv="X-UA-Compatible" content="IE=edge"
     meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"
@@ -15,6 +20,7 @@ html lang="en"
     script src="/assets/javascript/easymde.min.js"
     link rel="stylesheet" href="/assets/stylesheet/base.css"
     script src="/assets/javascript/base.js"
+    script == "Fluence.settings = #{current_user.settings.to_json};"
 
   body
     #navbar

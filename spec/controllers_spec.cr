@@ -99,6 +99,109 @@ describe "search filtering over HTTP" do
       response.body.should contain "/pages/locked/priv"
     end
   end
+
+  it "finds attachments by name and content, subject to the media ACL" do
+    with_each_storage do |_, _|
+      Fluence::Page.new("docs").update! SPEC_USER, "# Docs\n"
+      Fluence::Media.new("docs/report-qwv.txt").update! SPEC_USER, "nothing here"
+      Fluence::Media.new("docs/notes.txt").update! SPEC_USER, "contains findme-qwv inside"
+      Fluence::Media.new("locked/secret-qwv.txt").update! SPEC_USER, "x"
+
+      response = SpecClient.new.get "/pages/search?q=qwv"
+      response.status_code.should eq 200
+      response.body.should contain "/media/docs/report-qwv.txt"
+      response.body.should contain "/media/docs/notes.txt"
+      response.body.should contain %(href="/pages/docs")
+      response.body.should contain "/media/locked/secret-qwv.txt"
+
+      Fluence::ACL["guest"]["#{Fluence::OPTIONS.media_prefix}/locked/*"] = Acl::Perm::None
+      begin
+        response = SpecClient.new.get "/pages/search?q=qwv"
+        response.body.should contain "/media/docs/report-qwv.txt"
+        response.body.should_not contain "/media/locked/secret-qwv.txt"
+      ensure
+        Fluence::ACL["guest"].delete "#{Fluence::OPTIONS.media_prefix}/locked/*"
+      end
+    end
+  end
+end
+
+describe "pages by title" do
+  it "concatenates readable pages sharing a title, redirects a single match" do
+    with_each_storage do |_, _|
+      # Matched by title, by name, or both; "dave/other" by neither.
+      Fluence::Page.new("alice/calendar").update! SPEC_USER, "# Calendar\nalice-cal-body\n"
+      Fluence::Page.new("bob/calendar").update! SPEC_USER, "# Team Calendar\nbob-cal-body\n"
+      Fluence::Page.new("carol/plans").update! SPEC_USER, "# Calendar\ncarol-cal-body\n"
+      Fluence::Page.new("locked/calendar").update! SPEC_USER, "# Calendar\nlocked-cal-body\n"
+      Fluence::Page.new("dave/other").update! SPEC_USER, "# Other\ndave-body\n"
+
+      response = SpecClient.new.get "/titles/calendar"
+      response.status_code.should eq 200
+      response.body.should contain "alice-cal-body"
+      response.body.should contain "bob-cal-body"
+      response.body.should contain "carol-cal-body"
+      response.body.should contain "locked-cal-body"
+      response.body.should_not contain "dave-body"
+      response.body.should contain %(href="/pages/alice/calendar")
+
+      Fluence::ACL["guest"]["#{Fluence::OPTIONS.pages_prefix}/locked/*"] = Acl::Perm::None
+      begin
+        response = SpecClient.new.get "/titles/calendar"
+        response.body.should contain "alice-cal-body"
+        response.body.should_not contain "locked-cal-body"
+      ensure
+        Fluence::ACL["guest"].delete "#{Fluence::OPTIONS.pages_prefix}/locked/*"
+      end
+
+      response = SpecClient.new.get "/titles/Team%20Calendar"
+      response.status_code.should eq 302
+      response.headers["Location"].should eq "/pages/bob/calendar"
+
+      SpecClient.new.get("/titles/nothing-here").status_code.should eq 404
+    end
+  end
+end
+
+describe "user settings" do
+  it "are saved per user and change how pages open" do
+    with_each_storage do |_, _|
+      Fluence::Page.new("prefs").update! SPEC_USER, "# Prefs\n"
+
+      response = SpecClient.new.get "/users/settings"
+      response.status_code.should eq 302
+      response.headers["Location"].should eq "/users/login"
+
+      client = SpecClient.login "prefuser", "sekrit123"
+      response = client.get "/users/settings"
+      response.status_code.should eq 200
+      response.body.should contain %(name="autosave_delay")
+
+      response = client.get "/pages/prefs"
+      response.body.should contain "Fluence.editor.init(false);"
+      response.body.should contain %("autosave_delay":3)
+
+      response = client.post "/users/settings", {"editor_mode" => "edit", "side_by_side" => "on", "autosave_delay" => "9999", "theme" => "dark"}
+      response.status_code.should eq 302
+      settings = Fluence::USERS.load!["prefuser"].settings
+      settings.editor_mode.should eq "edit"
+      settings.side_by_side?.should be_true
+      settings.fullscreen?.should be_false
+      settings.autosave_delay.should eq 600
+      settings.theme.should eq "dark"
+
+      response = client.get "/pages/prefs"
+      response.body.should contain "Fluence.editor.init(true);"
+      response.body.should contain %(data-bs-theme="dark")
+      response.body.should contain %("side_by_side":true)
+
+      client.post "/users/settings", {"editor_mode" => "bogus", "theme" => "neon", "autosave_delay" => "x"}
+      settings = Fluence::USERS.load!["prefuser"].settings
+      settings.editor_mode.should eq "default"
+      settings.theme.should eq "auto"
+      settings.autosave_delay.should eq 3
+    end
+  end
 end
 
 describe "media upload over HTTP" do

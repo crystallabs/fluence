@@ -1,9 +1,4 @@
 class MediaController < ApplicationController
-  # get /media/search?q=
-  def search
-    redirect_to "#{Fluence::OPTIONS.homepage}"
-  end
-
   # get /media/*path
   def show
     acl_permit! :read

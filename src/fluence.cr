@@ -50,6 +50,7 @@ module Fluence
     ACL["guest"]["/sitemap"] = Acl::Perm::Read
     ACL["guest"]["#{Fluence::OPTIONS.pages_prefix}/*"] = Acl::Perm::Read
     ACL["guest"]["#{Fluence::OPTIONS.media_prefix}/*"] = Acl::Perm::Read
+    ACL["guest"]["#{Fluence::OPTIONS.titles_prefix}/*"] = Acl::Perm::Read
     ACL["guest"]["/"] = Acl::Perm::Read
     ACL.add("user")
     ACL["user"]["/*"] = Acl::Perm::Read

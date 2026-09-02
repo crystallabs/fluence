@@ -1,6 +1,16 @@
 var Fluence = {
 	editor : {
 		isPreviewActive: false
+	},
+	// The current user's preferences (Fluence::User::Settings), set by
+	// the layout right after this script. Defaults for pages that lack
+	// them.
+	settings : {
+		editor_mode: "default",
+		side_by_side: false,
+		fullscreen: false,
+		autosave_delay: 3,
+		theme: "auto"
 	}
 };
 
@@ -27,10 +37,21 @@ Fluence.editor.init = function(open_in_edit) {
 		document.getElementById("draft-notice").hidden = false;
 	}
 	if (open_in_edit)
-		editor.codemirror.focus();
+		Fluence.editor.startEditing();
 	else
 		Fluence.editor.togglePreview();
 	document.getElementById("edit-page").classList.remove("invisible");
+}
+
+// Entering edit mode: applies the user's preferred layout (side-by-side
+// preview, fullscreen) and focuses the editor.
+Fluence.editor.startEditing = function() {
+	var settings = Fluence.settings;
+	if (settings.side_by_side && !editor.isSideBySideActive())
+		editor.toggleSideBySide();
+	if (settings.fullscreen && !editor.isFullscreenActive())
+		editor.toggleFullScreen();
+	editor.codemirror.focus();
 }
 
 // Removes the stored draft, including one EasyMDE is about to write, and
@@ -75,6 +96,7 @@ Fluence.editor.saveAndContinue = function(form) {
 }
 
 Fluence.mde_options = function(can_edit) {
+	var delay = Fluence.settings.autosave_delay;
 	options = {
 		// All assets are served locally; never let the editor pull
 		// Font Awesome or spell-checker dictionaries from a CDN.
@@ -85,8 +107,11 @@ Fluence.mde_options = function(can_edit) {
 		shortcuts: { drawTable: "Cmd-Alt-T", undo: "Cmd-Z", redo: "Cmd-Y" },
 		// Unsaved edits are kept as a draft in the browser's localStorage,
 		// keyed by page path, and restored on the next visit (see
-		// Fluence.editor.init); saving the page discards the draft.
-		autosave: { enabled: true, delay: 3000, uniqueId: location.pathname },
+		// Fluence.editor.init); saving the page discards the draft. The
+		// delay is the user's setting; 0 turns drafts off.
+		autosave: { enabled: delay > 0, delay: delay * 1000, uniqueId: location.pathname },
+		// Side-by-side and fullscreen are independent choices here.
+		sideBySideFullscreen: false,
 		// Do not use placeholder because it only shows in Edit mode,
 		// and it is not needed there.
 		//placeholder: "Please enter Edit mode to add content",
@@ -132,7 +157,7 @@ Fluence.editor.togglePreview = function(){
 	document.getElementById("button_toggle").textContent = editing ? "Preview" : "Edit";
 	document.getElementById("button_save").hidden = !editing;
 	document.getElementById("edit-extras").hidden = !editing;
-	if (editing) editor.codemirror.focus();
+	if (editing) Fluence.editor.startEditing();
 }
 
 // Click handler of an attachment's Delete button: deletes over fetch and
