@@ -61,7 +61,7 @@ class GitController < ApplicationController
 
   private def run(service : String, extra_args : Array(String), input : IO)
     args = [] of String
-    # Legacy working-tree storages have the target branch checked out;
+    # Working-tree storages have the target branch checked out;
     # updateInstead makes a push update the checkout too (or refuses
     # cleanly if it has uncommitted changes). Irrelevant for bare repos.
     args += ["-c", "receive.denyCurrentBranch=updateInstead"] if service == "receive-pack"

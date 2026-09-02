@@ -75,17 +75,42 @@ module Fluence
       end
     end
 
-    def rename(old_path : String, new_path : String, user : Fluence::User, message : String)
+    def rename(moves : Array({String, String}), user : Fluence::User, message : String)
       @lock.synchronize do
         retrying_conflict do
-          status, blob = git ["rev-parse", "HEAD:#{old_path}"]
-          raise Error404.new "No such file: #{old_path}" unless status.success?
+          blobs = moves.map do |old_path, _|
+            status, blob = git ["rev-parse", "HEAD:#{old_path}"]
+            raise Error404.new "No such file: #{old_path}" unless status.success?
+            blob.strip
+          end
           commit(user, message) do |index_env|
-            index_remove old_path, index_env
-            git! ["update-index", "--add", "--cacheinfo", "100644,#{blob.strip},#{new_path}"], env: index_env
+            moves.each { |old_path, _| index_remove old_path, index_env }
+            moves.each_with_index do |(_, new_path), i|
+              git! ["update-index", "--add", "--cacheinfo", "100644,#{blobs[i]},#{new_path}"], env: index_env
+            end
           end
         end
       end
+    end
+
+    def log(path : String, limit : Int32 = 0) : Array(Commit)
+      return [] of Commit unless head
+      status, output = git log_args(path, limit)
+      status.success? ? parse_log(output) : [] of Commit
+    end
+
+    def read_at(path : String, rev : String) : String
+      check_rev! rev
+      status, output = git ["cat-file", "blob", "#{rev}:#{path}"]
+      raise Error404.new "No such file: #{path} at #{rev}" unless status.success?
+      output
+    end
+
+    def diff(path : String, rev : String) : String
+      check_rev! rev
+      status, output = git diff_args(path, rev)
+      raise Error404.new "No such revision: #{rev}" unless status.success?
+      output
     end
 
     def search(query : String, prefix : String) : Array(String)

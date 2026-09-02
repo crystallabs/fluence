@@ -10,6 +10,9 @@ class Fluence::Page < Fluence::File
     # A preceding '!' is an image (media, not a page link).
     LINK = /(?<![\\!])\[(?:[^\[\]\\]|\\.)*\]\(\s*([^)\s]+)(?:\s+"[^"]*")?\s*\)/
 
+    # Like `LINK`, but also matching images: ![alt](target "title").
+    LINK_OR_IMAGE = /(?<!\\)\[(?:[^\[\]\\]|\\.)*\]\(\s*([^)\s]+)(?:\s+"[^"]*")?\s*\)/
+
     # Lists the internal page links found in markdown *content*.
     # *context_name* is the name of the page holding the content; relative
     # link targets resolve against its directory, like URLs in a browser.
@@ -38,19 +41,43 @@ class Fluence::Page < Fluence::File
       result.to_s
     end
 
+    # Rewrites link and image targets starting with *old_prefix* followed
+    # by "/" (e.g. the URL of a page's attachments, "/media/old-name") to
+    # start with *new_prefix* instead. Returns the updated content.
+    def self.rewrite_prefix(content : String, old_prefix : String, new_prefix : String) : String
+      result = String::Builder.new content.bytesize
+      pos = 0
+      each_target(content, LINK_OR_IMAGE) do |target_start, target_end, target|
+        next unless target.starts_with? "#{old_prefix}/"
+        result << content[pos...target_start] << new_prefix << target.lchop(old_prefix)
+        pos = target_end
+      end
+      return content if pos == 0
+      result << content[pos..]
+      result.to_s
+    end
+
     # Yields {target_start, target_end, page_name} for every link to a wiki
     # page, skipping fenced and indented code blocks.
     private def self.each_link(content : String, context_name : String, &)
+      each_target(content, LINK) do |target_start, target_end, target|
+        if name = resolve target, context_name
+          yield target_start, target_end, name
+        end
+      end
+    end
+
+    # Yields {target_start, target_end, target} for every match of *pattern*
+    # (whose first group is the target), skipping fenced and indented code blocks.
+    private def self.each_target(content : String, pattern : Regex, &)
       offset = 0
       code_block = false
       content.each_line(chomp: false) do |line|
         if line.starts_with? "```"
           code_block = !code_block
         elsif !code_block && !line.starts_with?("    ")
-          line.scan(LINK) do |match|
-            if name = resolve match[1], context_name
-              yield offset + match.begin(1), offset + match.end(1), name
-            end
+          line.scan(pattern) do |match|
+            yield offset + match.begin(1), offset + match.end(1), match[1]
           end
         end
         offset += line.size

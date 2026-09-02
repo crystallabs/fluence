@@ -14,7 +14,7 @@ describe Fluence::Markdown do
       .should contain %(<a href="http://itisnot/not">not</a>)
   end
 
-  it "no longer treats [[wikilinks]] specially" do
+  it "leaves [[wikilinks]] as literal text" do
     Fluence::Markdown.to_html("[[test]]").should contain "[[test]]"
   end
 

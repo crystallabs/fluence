@@ -23,6 +23,13 @@ module Fluence
       @datadir = ::File.expand_path ENV.fetch("FLUENCE_DATADIR", "data"), Dir.current
       @metadir = ::File.expand_path ENV.fetch("FLUENCE_METADIR", "meta"), Dir.current
 
+      # Directory of static assets (stylesheets, scripts, logo), served at
+      # the site root. Defaults to the public/ directory of the source tree
+      # Fluence was compiled from, so the binary can be started from any
+      # working directory; override with FLUENCE_PUBLICDIR when the tree
+      # is not available at runtime.
+      @publicdir = ::File.expand_path ENV.fetch("FLUENCE_PUBLICDIR", ::File.join(__DIR__, "..", "public"))
+
       # Visible part of URL through which pages are accessed, e.g. /pages/my_page
       @pages_prefix = "/pages"
       # Start page - homepage. Defaults to /pages/home
@@ -74,6 +81,7 @@ module Fluence
     getter guest
     getter datadir : String
     getter metadir : String
+    getter publicdir : String
     getter homepage : String
     getter pages_prefix : String
     getter media_prefix : String

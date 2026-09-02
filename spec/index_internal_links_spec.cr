@@ -30,3 +30,13 @@ describe Fluence::Page::InternalLinks do
     updated.should eq "See [Old](/pages/new-page#part) and [rel](/pages/new-page), not [other](old-page-2)."
   end
 end
+
+describe Fluence::Page::InternalLinks do
+  it "rewrites link and image targets under a prefix" do
+    content = "![i](/media/old/a.png) [d](/media/old/sub/b.pdf) [n](/media/older/c.png) [p](/pages/old)\n```\n![i](/media/old/a.png)\n```\n"
+    updated = Fluence::Page::InternalLinks.rewrite_prefix content, "/media/old", "/media/new"
+
+    updated.should eq "![i](/media/new/a.png) [d](/media/new/sub/b.pdf) [n](/media/older/c.png) [p](/pages/old)\n```\n![i](/media/old/a.png)\n```\n"
+    Fluence::Page::InternalLinks.rewrite_prefix("plain", "/media/old", "/media/new").should eq "plain"
+  end
+end

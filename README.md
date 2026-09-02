@@ -9,9 +9,9 @@ Elegant wiki powered by Crystal, with markdown as native format and a WYSIWYG ed
 Content is stored in a Git repository, which is the single source of truth — Fluence keeps no cache or index that can go stale. Two storage modes are supported and auto-detected:
 
 1. **Bare repository** (default for new installations): the data directory is a bare Git repository. Fluence reads from and commits to it directly, without any checkout. External contributions are made with regular Git tooling — Fluence itself serves the repository over HTTP (see "Git access over HTTP" below), so `git clone` the wiki URL, edit, commit, and `git push` — pushed changes are visible in the wiki immediately.
-1. **Working tree** (used automatically for pre-0.7 data directories): the data directory is a normal checkout. Pages can also be created and edited directly on the filesystem, and such changes are likewise visible immediately. Set the environment variable `FLUENCE_STORAGE=worktree` before first startup to choose this mode for a new installation.
+1. **Working tree** (used automatically when the data directory contains a `.git` checkout): the data directory is a normal checkout. Pages can also be created and edited directly on the filesystem, and such changes are likewise visible immediately. Set the environment variable `FLUENCE_STORAGE=worktree` before first startup to choose this mode for a new installation.
 
-Fluence uses latest versions: Bootstrap 5.3.8, EasyMDE 2.20.0, Font Awesome 6.7.2, and highlight.js 11.11.1. All assets are served locally; pages make no requests to external CDNs. No jQuery.
+Fluence uses latest versions: Bootstrap 5.3.8, EasyMDE 2.20.0, Font Awesome 6.7.2, and highlight.js 11.11.1. All assets are served locally; pages make no requests to external CDNs.
 
 ## Installation and Startup
 
@@ -55,9 +55,19 @@ When Fluence starts, by default it will create two subdirectories in the current
 
 There are no files or directories required to pre-exist for Fluence to work. The locations can be overridden with the environment variables `FLUENCE_DATADIR` and `FLUENCE_METADIR`.
 
-There is no index or cache: listings, titles, internal-link resolution, and search always operate on the current repository contents, so nothing can go out of sync. (The `meta/pages` and `meta/media` index files written by Fluence <= 0.6 are no longer used and can be deleted.)
+Static assets (stylesheets, scripts, logo) are served from the `public/` directory of the source tree Fluence was compiled from, so the binary can be started from any working directory. If that tree is not available at runtime, point `FLUENCE_PUBLICDIR` at a copy of `public/`.
 
-Page content is GitHub Flavored Markdown (tables, strikethrough, autolinks, emoji). Links between pages are ordinary markdown links — `[Title](/pages/name)`, or a target relative to the current page such as `[Title](sibling)`. The `[[wikilink]]` syntax of earlier versions is no longer interpreted; to convert existing content once, start Fluence with `FLUENCE_MIGRATE_WIKILINKS=1` — it rewrites all affected pages to standard links, commits them, and exits.
+There is no index or cache: listings, titles, internal-link resolution, and search always operate on the current repository contents, so nothing can go out of sync.
+
+Page content is GitHub Flavored Markdown (tables, strikethrough, autolinks, emoji). Links between pages are ordinary markdown links — `[Title](/pages/name)`, or a target relative to the current page such as `[Title](sibling)`. To convert content written with the `[[wikilink]]` syntax to standard links, start Fluence once with `FLUENCE_MIGRATE_WIKILINKS=1` — it rewrites all affected pages, commits them, and exits.
+
+## Page history
+
+Every change made through the wiki is a git commit whose subject names the action and the entry: `Create page docs/guide`, `Update page docs/guide`, `Rename page docs/guide -> docs/handbook`, `Delete page docs/guide`, `Upload media docs/guide/shot.png`. The optional "Change summary" entered next to the Save button becomes the commit body, and automated follow-up edits (link rewrites after a rename, restores) describe themselves there too. Commits are authored by the acting wiki user and committed by "Fluence Wiki".
+
+Each page links to its history (`/pages/<name>?history`): the list of commits that touched it, following renames. Every revision can be viewed as it was (`?rev=<commit>`) and its changes shown as a diff (`?diff=<commit>`); users with write permission on the page can restore any revision, which saves its content as a new commit. The history views live under the page's own URL, so the page's ACL applies to them.
+
+Renaming a page moves its attachments (`media/<name>/...`) along with it in the same commit and rewrites the page's links to them; with "Update links" checked, links in other pages to the page and to its attachments are rewritten too.
 
 ## Git access over HTTP
 
@@ -84,6 +94,6 @@ The Fluence Wiki is usable. On-disk format for data won't change so you will be 
 
 Important things to have in mind currently:
 
-1. On a fresh install, the first user to register becomes admin (member of the `admin` group, which can manage users and ACLs); everyone who registers later is a regular user who can read and edit pages and media but not administer the wiki. Registration is open by default and doesn't require any confirmation; set `FLUENCE_REGISTRATION=closed` to disable self-registration, after which only admins can add accounts through the admin interface. The permission scheme can be further configured via both `meta/acl` and the GUI. Installations created by earlier versions keep their existing ACLs (where every registered user is admin); to tighten them, change the `user` group's `/admin/*` permission to `none` and add an `admin` group with write on `/*` in the ACL admin page.
+1. On a fresh install, the first user to register becomes admin (member of the `admin` group, which can manage users and ACLs); everyone who registers later is a regular user who can read and edit pages and media but not administer the wiki. Registration is open by default and doesn't require any confirmation; set `FLUENCE_REGISTRATION=closed` to disable self-registration, after which only admins can add accounts through the admin interface. The permission scheme can be further configured via both `meta/acl` and the GUI.
 
 Things we have in mind or are working on are listed in [project issues](https://github.com/crystallabs/fluence/issues). Your comments will help us decide on priorities.

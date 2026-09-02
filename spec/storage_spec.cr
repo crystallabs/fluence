@@ -117,3 +117,56 @@ describe Fluence::Storage do
     end
   end
 end
+
+describe Fluence::Storage do
+  it "reports history, past content, and diffs on each backend" do
+    with_each_storage do |storage, kind|
+      storage.log("pages/h.md").should be_empty
+      storage.write "pages/h.md", "# H\nfirst\n", SPEC_USER, "Create page h\n\nInitial text"
+      storage.write "pages/h.md", "# H\nsecond\n", SPEC_USER, "Update page h"
+      storage.rename "pages/h.md", "pages/moved.md", SPEC_USER, "Rename page h -> moved"
+
+      log = storage.log("pages/moved.md")
+      log.map(&.subject).should eq ["Rename page h -> moved", "Update page h", "Create page h"]
+      log[2].body.should eq "Initial text"
+      log[1].body.should eq ""
+      log.each do |commit|
+        commit.author.should eq "spec"
+        commit.oid.size.should eq 40
+        commit.short_oid.should eq commit.oid[0, 8]
+        (Time.utc - commit.time).should be < 1.minute
+      end
+      storage.log("pages/moved.md", 2).map(&.subject).should eq ["Rename page h -> moved", "Update page h"]
+
+      storage.read_at("pages/h.md", log[2].oid).should eq "# H\nfirst\n"
+      storage.read_at("pages/h.md", log[1].short_oid).should eq "# H\nsecond\n"
+      storage.read_at("pages/moved.md", log[0].oid).should eq "# H\nsecond\n"
+      expect_raises(Fluence::Error404) { storage.read_at "pages/moved.md", log[1].oid }
+      expect_raises(Fluence::Error404) { storage.read_at "pages/h.md", "HEAD" }
+
+      diff = storage.diff("pages/h.md", log[1].oid)
+      diff.should contain "-first"
+      diff.should contain "+second"
+      storage.diff("pages/h.md", log[2].oid).should contain "+first"
+      storage.diff("pages/moved.md", log[1].oid).should eq ""
+      expect_raises(Fluence::Error404) { storage.diff "pages/h.md", "--output=x" }
+    end
+  end
+
+  it "renames several paths in one commit" do
+    with_each_storage do |storage, kind|
+      storage.write "pages/p.md", "# P\n", SPEC_USER, "Create page p"
+      storage.write "media/p/a.png", "A", SPEC_USER, "Upload media p/a.png"
+      storage.write "media/p/sub/b.txt", "B", SPEC_USER, "Upload media p/sub/b.txt"
+
+      storage.rename [{"pages/p.md", "pages/q.md"}, {"media/p/a.png", "media/q/a.png"},
+                      {"media/p/sub/b.txt", "media/q/sub/b.txt"}], SPEC_USER, "Rename page p -> q"
+
+      storage.list("pages").should eq ["pages/q.md"]
+      storage.list("media").should eq ["media/q/a.png", "media/q/sub/b.txt"]
+      storage.read("media/q/sub/b.txt").should eq "B"
+      git_log(storage).lines.size.should eq 4
+      storage.log("media/q/a.png").map(&.subject).should eq ["Rename page p -> q", "Upload media p/a.png"]
+    end
+  end
+end

@@ -20,12 +20,12 @@ require "./**"
 
 Kemal.config.host_binding = Fluence::OPTIONS.host
 Kemal.config.port = Fluence::OPTIONS.port
+Kemal.config.public_folder = Fluence::OPTIONS.publicdir
 
 module Fluence
   Dir.mkdir_p Fluence::OPTIONS.metadir
 
-  # Wiki content storage — a git repository (bare by default for new
-  # installations, or the pre-existing working tree of older ones).
+  # Wiki content storage — a git repository, bare or with a working tree.
   # Initialized eagerly so a misconfigured data directory fails at boot.
   STORAGE = Fluence::Storage.current
 
@@ -68,12 +68,11 @@ module Fluence
 	# Collection-level views over the storage. Stateless: every listing,
 	# title, and search goes to the storage (and thus git) directly, so
 	# external modifications are always visible and there is no index to
-	# rebuild. (The `meta/pages` and `meta/media` index files of Fluence
-	# <= 0.6 are no longer used and can be deleted.)
+	# rebuild.
 	PAGES = Fluence::Catalog(Fluence::Page).new("pages")
 	MEDIA = Fluence::Catalog(Fluence::Media).new("media")
 
-	# One-shot conversion of legacy [[wikilinks]] to standard markdown links.
+	# One-shot conversion of [[wikilink]] syntax to standard markdown links.
 	# Deliberate opt-in: it rewrites and commits every affected page.
 	if ENV["FLUENCE_MIGRATE_WIKILINKS"]?
 		changed = Fluence::WikilinkMigration.run! Fluence::User.new("wikilink-migration", "")

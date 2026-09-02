@@ -35,6 +35,26 @@ module Fluence::Helpers::Page
     return add_toc_level(b, index_entry, current_id + 1, current_head)
   end
 
+  # Renders a unified diff as HTML lines classed by their role
+  # (diff-add, diff-del, diff-hunk, diff-meta) for styling in base.css.
+  def diff_html(diff : String) : String
+    String.build do |b|
+      diff.each_line do |line|
+        css = case
+              when line.starts_with?("+++"), line.starts_with?("---") then "diff-meta"
+              when line.starts_with?('+')                              then "diff-add"
+              when line.starts_with?('-')                              then "diff-del"
+              when line.starts_with?("@@")                             then "diff-hunk"
+              when line.starts_with?("diff "), line.starts_with?("index ") then "diff-meta"
+              else                                                          ""
+              end
+        b << (css.empty? ? "<span>" : %(<span class="#{css}">))
+        HTML.escape line, b
+        b << "</span>\n"
+      end
+    end
+  end
+
   def add_toc(index_entry)
     # (index_entry.values.map(&.size).sum + index_entry.size * 9)
     toc = String.build do |b|

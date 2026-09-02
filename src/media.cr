@@ -26,6 +26,15 @@ class Fluence::Media < Fluence::File
 		"media"
 	end
 
+	def kind : String
+		"media"
+	end
+
+	# Attachments are uploaded rather than created.
+	protected def create_verb : String
+		"Upload"
+	end
+
 	# Beginning of the URL
 	def url_prefix : String
 		Fluence::OPTIONS.media_prefix

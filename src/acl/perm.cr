@@ -11,8 +11,7 @@ enum Acl::Perm
   # level 3. Can read, can write.
   Write = 3
 
-  # Crystal < 1.0 serialized enums to YAML as numbers, >= 1.0 as member
-  # names. Accept both so that meta files written by older Fluence load.
+  # Accepts the YAML value either as a number or as a member name.
   def self.new(ctx : YAML::ParseContext, node : YAML::Nodes::Node) : self
     unless node.is_a?(YAML::Nodes::Scalar)
       node.raise "Expected scalar, not #{node.kind}"

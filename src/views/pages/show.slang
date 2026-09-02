@@ -47,8 +47,16 @@
                 a.btn.btn-sm.w-100.btn-success href="#" onclick="Fluence.editor.togglePreview()" id="button_toggle" white-space="normal" Preview
               .col
                 button.btn.btn-sm.w-100.btn-success name="save" id="button_save" type="submit" value="save" form="edit-page" visibility="hidden" Save
+            input.form-control.form-control-sm.mt-2 type="text" name="summary" id="input-summary" form="edit-page" placeholder="Change summary (optional)" maxlength="500" autocomplete="off"
             hr
         - if page.exists?
+          #page-history-link.col-12
+            span History
+            .small
+              - if last_commit
+                = "Last changed #{last_commit.time.to_s("%Y-%m-%d %H:%M")} by #{last_commit.author}."
+              a.ms-1 href="#{page.url}?history" View history
+            hr
           #page-toc.col-12
             span Table of Contents
             - if !page.toc.empty?

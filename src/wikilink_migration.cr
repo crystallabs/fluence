@@ -1,9 +1,9 @@
 require "./page"
 
-# One-shot conversion of the legacy [[wikilink]] syntax to standard
-# markdown links, resolving names against the catalog the way the old
-# renderer did. Run with FLUENCE_MIGRATE_WIKILINKS=1; each modified page
-# is committed to the wiki repository.
+# One-shot conversion of the [[wikilink]] syntax to standard markdown
+# links, resolving names against the catalog. Run with
+# FLUENCE_MIGRATE_WIKILINKS=1; each modified page is committed to the
+# wiki repository.
 module Fluence::WikilinkMigration
   WIKILINK = /(?<!\\)\[\[([^\[\]\|\n]+)(?:\|([^\[\]\n]*))?\]\]/
 

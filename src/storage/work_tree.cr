@@ -67,13 +67,34 @@ module Fluence
       end
     end
 
-    def rename(old_path : String, new_path : String, user : Fluence::User, message : String)
+    def rename(moves : Array({String, String}), user : Fluence::User, message : String)
       @lock.synchronize do
-        ::Dir.mkdir_p ::File.dirname(abs(new_path))
-        ::File.rename abs(old_path), abs(new_path)
-        prune_empty_dirs ::File.dirname(abs(old_path))
-        commit [old_path, new_path], user, message
+        moves.each do |old_path, new_path|
+          ::Dir.mkdir_p ::File.dirname(abs(new_path))
+          ::File.rename abs(old_path), abs(new_path)
+        end
+        moves.each { |old_path, _| prune_empty_dirs ::File.dirname(abs(old_path)) }
+        commit moves.flat_map { |old_path, new_path| [old_path, new_path] }, user, message
       end
+    end
+
+    def log(path : String, limit : Int32 = 0) : Array(Commit)
+      status, output = git log_args(path, limit)
+      status.success? ? parse_log(output) : [] of Commit
+    end
+
+    def read_at(path : String, rev : String) : String
+      check_rev! rev
+      status, output = git ["cat-file", "blob", "#{rev}:#{path}"]
+      raise Error404.new "No such file: #{path} at #{rev}" unless status.success?
+      output
+    end
+
+    def diff(path : String, rev : String) : String
+      check_rev! rev
+      status, output = git diff_args(path, rev)
+      raise Error404.new "No such revision: #{rev}" unless status.success?
+      output
     end
 
     def search(query : String, prefix : String) : Array(String)

@@ -95,3 +95,15 @@ a[href*="//"] {
 }
 */
 
+
+/* Unified diffs on the page history views. */
+pre.diff {
+  padding: .5rem;
+  background: #f8f9fa;
+  overflow-x: auto;
+}
+pre.diff span { display: block; }
+pre.diff .diff-add { background: #e6ffec; color: #116329; }
+pre.diff .diff-del { background: #ffebe9; color: #82071e; }
+pre.diff .diff-hunk { color: #6f42c1; }
+pre.diff .diff-meta { color: #6c757d; }

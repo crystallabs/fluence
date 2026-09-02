@@ -1,19 +1,78 @@
 class PagesController < ApplicationController
 
   # get /pages/*path
+  #
+  # Query parameters select the page's history views, which share the
+  # page URL so the page's ACL applies to them:
+  #   ?history    list of commits that touched the page
+  #   ?rev=<oid>  page content as of that commit
+  #   ?diff=<oid> what that commit changed in the page
   def show
     acl_permit! :read
     flash["danger"] = params.query["flash.danger"] if params.query["flash.danger"]?
     page = Fluence::Page.new params.url["path"]
     page.process! if page.exists?
-    media = Fluence::Media.new page.name
 
-    show_show(page, media)
+    if params.query.has_key? "history"
+      show_history page
+    elsif rev = params.query["rev"]?
+      show_revision page, rev
+    elsif rev = params.query["diff"]?
+      show_diff page, rev
+    else
+      show_show page, Fluence::Media.new(page.name)
+    end
+  end
+
+  # Commits that touched the page; the newest HISTORY_LIMIT unless ?all.
+  HISTORY_LIMIT = 100
+
+  private def show_history(page)
+    limit = params.query.has_key?("all") ? 0 : HISTORY_LIMIT
+    commits = page.history limit
+    truncated = limit > 0 && commits.size == limit
+    pages = Fluence::PAGES.children1
+    title = "History of #{page.title} - #{title()}"
+    render "history.slang"
+  end
+
+  private def show_revision(page, rev)
+    commit = commit_or_redirect(page, rev) || return
+    body = page.read_at commit.oid
+    body_html = Fluence::Markdown.to_html body
+    writable = Fluence::ACL.permitted? current_user, page.url, Acl::Perm::Write
+    pages = Fluence::PAGES.children1
+    title = "#{page.title} @ #{commit.short_oid} - #{title()}"
+    render "revision.slang"
+  rescue Fluence::Error404
+    flash["danger"] = "The page did not exist in revision #{rev}."
+    redirect_to "#{page.url}?history"
+  end
+
+  private def show_diff(page, rev)
+    commit = commit_or_redirect(page, rev) || return
+    diff = page.diff commit.oid
+    pages = Fluence::PAGES.children1
+    title = "Changes to #{page.title} @ #{commit.short_oid} - #{title()}"
+    render "diff.slang"
+  end
+
+  # The commit *rev* from the page's history, or nil after redirecting to
+  # the history when it is not one of them.
+  private def commit_or_redirect(page, rev) : Fluence::Storage::Commit?
+    if rev.matches? Fluence::Storage::REV
+      commit = page.history.find &.oid.starts_with?(rev)
+    end
+    return commit if commit
+    flash["danger"] = "Revision '#{rev}' is not part of the history of page '#{page.name}'."
+    redirect_to "#{page.url}?history"
+    nil
   end
 
   private def show_show(page, media)
     body = page.exists? ? (page.read rescue "") : ""
     body_html = Fluence::Markdown.to_html body
+    last_commit = page.exists? ? page.history(1).first? : nil
     Fluence::ACL.load!
 
     if !page.exists?
@@ -68,12 +127,17 @@ class PagesController < ApplicationController
           old_name = page.name
           new_name = page.name.sub /^#{Regex.escape old_main_page_name}/, new_main_name
 
-          # The user must be permitted to write at the destination too.
-          new_url = "#{Fluence::OPTIONS.pages_prefix}/#{Fluence::Page.sanitize(new_name).strip "/"}"
-          unless Fluence::ACL.permitted?(current_user, new_url, Acl::Perm::Write)
-            flash["danger"] = "You are not permitted to write to '#{new_url}'."
-            redirect_to old_url
-            return
+          # The user must be permitted to write at the destination too,
+          # including where the page's attachments move to.
+          new_page = Fluence::Page.new new_name
+          destinations = [new_page.url]
+          destinations << Fluence::Media.new(new_page.name).url unless page.attachment_paths.empty?
+          destinations.each do |new_url|
+            unless Fluence::ACL.permitted?(current_user, new_url, Acl::Perm::Write)
+              flash["danger"] = "You are not permitted to write to '#{new_url}'."
+              redirect_to old_url
+              return
+            end
           end
 
           page.rename! current_user, new_name, !!params.body["input-page-overwrite"]?, subtree: false, intlinks: !!params.body["input-page-intlinks"]?
@@ -111,7 +175,7 @@ class PagesController < ApplicationController
 
   private def update_edit(page)
     action = page.exists? ? "updated" : "created"
-    page.update! current_user, params.body["body"]
+    page.update! current_user, params.body["body"], params.body["summary"]?
     flash["success"] = %Q(Page '#{page.name}' has been #{action})
     redirect_to page.url
   rescue err

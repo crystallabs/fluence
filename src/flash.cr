@@ -1,7 +1,7 @@
 require "json"
 
-# Vendored port of kemal-flash (https://github.com/neovintage/kemal-flash),
-# which is unmaintained and relied on JSON.mapping, removed in Crystal 1.0.
+# Vendored port of kemal-flash (https://github.com/neovintage/kemal-flash)
+# on JSON::Serializable.
 module Kemal::Flash
   class FlashHash
     include JSON::Serializable

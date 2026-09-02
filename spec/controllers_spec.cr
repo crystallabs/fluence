@@ -259,3 +259,104 @@ describe "git smart-HTTP access" do
     end
   end
 end
+
+describe "page history over HTTP" do
+  it "lists revisions, shows past content and diffs, and restores" do
+    with_each_storage do |storage, _|
+      client = SpecClient.login "editor", "sekrit123"
+      client.post "/pages/hist", {"body" => "# Hist\nfirst\n", "summary" => "Initial version"}
+      client.post "/pages/hist", {"body" => "# Hist\nsecond\n"}
+      commits = storage.log "pages/hist.md"
+      commits.map(&.subject).should eq ["Update page hist", "Create page hist"]
+      commits[1].body.should eq "Initial version"
+
+      response = SpecClient.new.get "/pages/hist?history"
+      response.status_code.should eq 200
+      response.body.should contain "Create page hist"
+      response.body.should contain "Initial version"
+      response.body.should contain "Update page hist"
+      response.body.should contain "/pages/hist?rev=#{commits[1].oid}"
+      response.body.should contain "/pages/hist?diff=#{commits[0].oid}"
+
+      response = SpecClient.new.get "/pages/hist?rev=#{commits[1].oid}"
+      response.status_code.should eq 200
+      response.body.should contain "<p>first</p>"
+      response.body.should_not contain "Restore this revision"
+      client.get("/pages/hist?rev=#{commits[1].short_oid}").body.should contain "Restore this revision"
+
+      response = SpecClient.new.get "/pages/hist?diff=#{commits[0].oid}"
+      response.status_code.should eq 200
+      response.body.should contain %(<span class="diff-del">-first</span>)
+      response.body.should contain %(<span class="diff-add">+second</span>)
+
+      {"--output=x", "0" * 40, "HEAD"}.each do |rev|
+        response = SpecClient.new.get "/pages/hist?rev=#{rev}"
+        response.status_code.should eq 302
+        response.headers["Location"].should eq "/pages/hist?history"
+      end
+
+      response = client.post "/pages/hist",
+        {"body" => "# Hist\nfirst\n", "summary" => "Restore revision #{commits[1].short_oid}"}
+      response.status_code.should eq 302
+      Fluence::Page.new("hist").read.should eq "# Hist\nfirst\n"
+      storage.log("pages/hist.md")[0].body.should eq "Restore revision #{commits[1].short_oid}"
+
+      client.get("/pages/hist").body.should contain "/pages/hist?history"
+    end
+  end
+
+  it "keeps the history views behind the page's read permission" do
+    with_each_storage do |storage, _|
+      Fluence::Page.new("locked/secret").update! SPEC_USER, "# Secret\n"
+      oid = storage.log("pages/locked/secret.md")[0].oid
+
+      Fluence::ACL["guest"]["#{Fluence::OPTIONS.pages_prefix}/locked/*"] = Acl::Perm::None
+      begin
+        {"?history", "?rev=#{oid}", "?diff=#{oid}"}.each do |query|
+          response = SpecClient.new.get "/pages/locked/secret#{query}"
+          response.status_code.should eq 302
+          response.headers["Location"].should eq Fluence::OPTIONS.homepage
+        end
+      ensure
+        Fluence::ACL["guest"].delete "#{Fluence::OPTIONS.pages_prefix}/locked/*"
+      end
+
+      SpecClient.new.get("/pages/locked/secret?history").status_code.should eq 200
+    end
+  end
+end
+
+describe "attachments on rename over HTTP" do
+  it "moves attachments with the page, unless the user cannot write at their destination" do
+    with_each_storage do |_, _|
+      client = SpecClient.login "editor", "sekrit123"
+      client.post "/pages/withfile", {"body" => "# With File\n![a](/media/withfile/a.txt)\n"}
+      Fluence::Media.new("withfile/a.txt").write SPEC_USER, "A"
+
+      Fluence::ACL["user"]["#{Fluence::OPTIONS.media_prefix}/locked/*"] = Acl::Perm::Read
+      begin
+        client.post "/pages/withfile", {"rename" => "rename", "input-page-name" => "locked/withfile"}
+        Fluence::Page.new("withfile").exists?.should be_true
+        Fluence::Media.new("withfile/a.txt").exists?.should be_true
+      ensure
+        Fluence::ACL["user"].delete "#{Fluence::OPTIONS.media_prefix}/locked/*"
+      end
+
+      client.post "/pages/withfile", {"rename" => "rename", "input-page-name" => "moved/withfile"}
+      Fluence::Media.new("withfile/a.txt").exists?.should be_false
+      Fluence::Media.new("moved/withfile/a.txt").read.should eq "A"
+      Fluence::Page.new("moved/withfile").read.should eq "# With File\n![a](/media/moved/withfile/a.txt)\n"
+    end
+  end
+end
+
+describe "static assets" do
+  it "are served from the source tree's public/ regardless of the working directory" do
+    Fluence::OPTIONS.publicdir.should eq File.expand_path("public", Dir.current)
+    Dir.cd(Dir.tempdir) do
+      response = SpecClient.new.get "/assets/stylesheet/base.css"
+      response.status_code.should eq 200
+      response.body.should contain "#pages-hierarchy"
+    end
+  end
+end

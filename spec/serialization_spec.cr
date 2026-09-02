@@ -1,9 +1,7 @@
 require "./spec_helper"
 
-# Fluence was originally written for Crystal < 1.0, whose YAML.mapping and
-# enum serialization produced a specific on-disk format for the meta/ files.
-# These specs make sure the current YAML::Serializable-based code both
-# round-trips its own format and still reads meta files written by old builds.
+# The meta/ files are YAML::Serializable. These specs make sure the code
+# round-trips its own format and also reads enum values given as numbers.
 describe "serialization" do
   it "round-trips a Group through YAML" do
     g1 = Acl::Group.new(
@@ -21,8 +19,8 @@ describe "serialization" do
     g2.permitted?("/elsewhere", Acl::Perm::Read).should be_true
   end
 
-  it "reads Group YAML written by Crystal < 1.0 (numeric enum values)" do
-    legacy = <<-YAML
+  it "reads Group YAML with numeric enum values" do
+    yaml = <<-YAML
       name: guest
       permissions:
         ? value: /pages/*
@@ -31,7 +29,7 @@ describe "serialization" do
         : 3
       default: 0
       YAML
-    g = Acl::Group.from_yaml legacy
+    g = Acl::Group.from_yaml yaml
     g.permitted?("/pages/x", Acl::Perm::Read).should be_true
     g.permitted?("/pages/x", Acl::Perm::Write).should be_false
     g.permitted?("/users/x", Acl::Perm::Write).should be_true
