@@ -1,9 +1,7 @@
 .container-fluid
   .row
     .col
-      span Wiki Pages
-      #pages-hierarchy
-        == add_page pages
+      == render_template "pages/_page_menu.slang"
 
     .col-sm-10
       - heading = "History"

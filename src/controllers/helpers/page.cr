@@ -1,8 +1,83 @@
 module Fluence::Helpers::Page
-  # TODO: move that
-  def add_page(entries, stack = [] of String)
+  # A node of the page tree shown in the page menu and the sitemap: a page,
+  # a directory level without a page of its own, or both.
+  class TreeNode
+    getter name : String
+    property title : String
+    property? page : Bool
+    getter children = [] of TreeNode
+
+    def initialize(@name, @title, @page)
+    end
+
+    def directory? : Bool
+      !@children.empty?
+    end
+
+    def url : String
+      "#{Fluence::OPTIONS.pages_prefix}/#{@name}"
+    end
+
+    # Id of the collapsible element holding the children.
+    def dom_id : String
+      "tree-" + @name.gsub(/[^A-Za-z0-9]+/, "-")
+    end
+  end
+
+  # Builds the tree of all pages from the catalog in one pass, siblings
+  # ordered by name.
+  def page_tree : Array(TreeNode)
+    roots = [] of TreeNode
+    index = {} of String => TreeNode
+    titles = Fluence::PAGES.titles
+    titles.keys.sort!.each do |name|
+      siblings = roots
+      path = ""
+      parts = name.split '/'
+      parts.each_with_index do |part, i|
+        path = i == 0 ? part : "#{path}/#{part}"
+        node = index[path]? || begin
+          new_node = TreeNode.new path, part, false
+          index[path] = new_node
+          siblings << new_node
+          new_node
+        end
+        if i == parts.size - 1
+          node.page = true
+          node.title = titles[name]
+        end
+        siblings = node.children
+      end
+    end
+    roots
+  end
+
+  # Pages of *nodes* in menu order (depth first).
+  def flatten_tree(nodes : Array(TreeNode), into = [] of TreeNode) : Array(TreeNode)
+    nodes.each do |node|
+      into << node if node.page?
+      flatten_tree node.children, into
+    end
+    into
+  end
+
+  # The previous page, parent page, and next page of *current* in menu
+  # order; nil where there is none.
+  def page_neighbours(tree : Array(TreeNode), current : String) : {TreeNode?, TreeNode?, TreeNode?}
+    pages = flatten_tree tree
+    i = pages.index &.name.==(current)
+    prev_page = i && i > 0 ? pages[i - 1] : nil
+    next_page = i && i < pages.size - 1 ? pages[i + 1] : nil
+    parent = ::File.dirname current
+    up_page = parent == "." ? nil : pages.find &.name.==(parent)
+    {prev_page, up_page, next_page}
+  end
+
+  # Renders *nodes* as a collapsible tree. Branches containing *current*
+  # start expanded; with *current* nil (the sitemap) every branch does.
+  def add_page_tree(nodes : Array(TreeNode), current : String?)
     String.build do |str|
-      Slang.embed("src/views/pages/pages.directory.slang", "str")
+      Slang.embed("src/views/pages/page_tree.slang", "str")
     end
   end
   def add_media(entries, stack = [] of String)

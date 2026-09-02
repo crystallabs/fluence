@@ -367,14 +367,14 @@ describe "editor conveniences over HTTP" do
       client = SpecClient.login "editor", "sekrit123"
       body = client.get("/pages/docs/my-new-page").body
       body.should contain "# My New Page"
-      body.should contain "editor.codemirror.focus();"
+      body.should contain "Fluence.editor.init(true);"
 
       client.post "/pages/docs/my-new-page", {"body" => "# Saved\n"}
       body = client.get("/pages/docs/my-new-page").body
       body.should_not contain "# My New Page"
-      body.should contain "Fluence.editor.togglePreview();"
-      client.get("/pages/docs/my-new-page?edit").body.should contain "editor.codemirror.focus();"
-      client.get("/pages/docs/other-page?view").body.should contain "Fluence.editor.togglePreview();"
+      body.should contain "Fluence.editor.init(false);"
+      client.get("/pages/docs/my-new-page?edit").body.should contain "Fluence.editor.init(true);"
+      client.get("/pages/docs/other-page?view").body.should contain "Fluence.editor.init(false);"
 
       SpecClient.new.get("/pages/docs/other-page").body.should_not contain "# Other Page"
     end
@@ -410,6 +410,32 @@ describe "attachment deletion over HTTP" do
       Fluence::Media.new("att/c.txt").write SPEC_USER, "C"
       SpecClient.new.post("/media/att/c.txt", {"delete" => "Delete", "media-name" => "c.txt"}).status_code.should eq 302
       Fluence::Media.new("att/c.txt").exists?.should be_true
+    end
+  end
+end
+
+describe "page menu over HTTP" do
+  it "shows a collapsible tree expanded along the current page, with prev/up/next links" do
+    with_each_storage do |_, _|
+      %w[alpha docs docs/guide docs/guide/install docs/zeta other/thing].each do |name|
+        Fluence::Page.new(name).update! SPEC_USER, "# #{name.split('/').last.capitalize}\n"
+      end
+
+      body = SpecClient.new.get("/pages/docs/guide").body
+      body.should contain %(<a class="tree-link active" href="/pages/docs/guide">Guide</a>)
+      body.should contain %(<div class="collapse show" id="tree-docs">)
+      body.should contain %(<div class="collapse show" id="tree-docs-guide">)
+      body.should contain %(<div class="collapse" id="tree-other">)
+      body.should contain %(<a class="tree-link text-body-secondary" href="/pages/other">other</a>)
+      body.should contain %(href="/pages/docs" title="Previous: Docs">)
+      body.should contain %(href="/pages/docs" title="Up: Docs">)
+      body.should contain %(href="/pages/docs/guide/install" title="Next: Install">)
+
+      body = SpecClient.new.get("/pages/alpha").body
+      body.should contain %(<span class="btn btn-outline-secondary text-nowrap disabled">‹ Prev</span>)
+      body.should contain %(href="/pages/docs" title="Next: Docs">)
+
+      SpecClient.new.get("/sitemap").body.should contain %(<div class="collapse show" id="tree-other">)
     end
   end
 end

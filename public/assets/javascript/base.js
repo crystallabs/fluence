@@ -4,6 +4,20 @@ var Fluence = {
 	}
 };
 
+// The EasyMDE instance of the page editor, once initialized.
+var editor;
+
+// Creates the page editor in edit or preview mode, then reveals the form
+// (hidden until now so the mode switch happens out of sight).
+Fluence.editor.init = function(open_in_edit) {
+	editor = new EasyMDE(Fluence.mde_options(true));
+	if (open_in_edit)
+		editor.codemirror.focus();
+	else
+		Fluence.editor.togglePreview();
+	document.getElementById("edit-page").classList.remove("invisible");
+}
+
 Fluence.mde_options = function(can_edit) {
 	options = {
 		// All assets are served locally; never let the editor pull

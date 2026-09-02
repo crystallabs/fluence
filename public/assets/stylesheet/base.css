@@ -1,4 +1,4 @@
-#pages-hierarchy ul:first-child, #pages-hierarchy ol:first-child {
+#pages-hierarchy > ul {
   padding: 0;
   margin: 0;
 }
@@ -14,6 +14,64 @@ ul, ol {
 /* The navbar link to the current page. */
 .navbar-nav .nav-link.active {
   font-weight: bold;
+}
+
+/* Headings of the side blocks (page hierarchy, attachments, sidebar). */
+.section-title {
+  font-size: .75rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: #6c757d;
+  margin: 0 0 .35rem;
+}
+
+/* Page tree in the page menu and the sitemap. */
+.page-tree .page-tree {
+  margin-left: 1rem;
+}
+.page-tree .tree-toggle {
+  display: inline-block;
+  width: 1rem;
+  flex: 0 0 1rem;
+  color: #6c757d;
+  text-decoration: none;
+}
+.page-tree .tree-toggle::before {
+  content: "\25BE";
+}
+.page-tree .tree-toggle.collapsed::before {
+  content: "\25B8";
+}
+.page-tree .tree-leaf::before {
+  content: "";
+}
+.page-tree .tree-link.active {
+  font-weight: bold;
+}
+
+/* Collapsible section: the heading itself is the toggle. */
+.section-toggle {
+  color: inherit;
+  text-decoration: none;
+}
+.section-toggle::after {
+  content: " \25BE";
+}
+.section-toggle.collapsed::after {
+  content: " \25B8";
+}
+
+/* Sidebar sections on page views. */
+#sidebar section + section {
+  border-top: 1px solid #dee2e6;
+  margin-top: .75rem;
+  padding-top: .6rem;
+}
+
+/* In preview mode only the mode buttons remain in the editor toolbar. */
+.editor-toolbar.disabled-for-preview button:not(.no-disable),
+.editor-toolbar.disabled-for-preview i.separator {
+  display: none;
 }
 
 /* Server-rendered page content shown to readers. */

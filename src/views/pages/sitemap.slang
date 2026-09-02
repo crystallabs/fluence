@@ -6,7 +6,7 @@
     .col
       h2 Pages
       #pages-hierarchy
-        == add_page pages
+        == add_page_tree tree, nil
     .col
       h2 Media
       #pages-hierarchy

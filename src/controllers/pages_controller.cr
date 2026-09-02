@@ -31,7 +31,7 @@ class PagesController < ApplicationController
     limit = params.query.has_key?("all") ? 0 : HISTORY_LIMIT
     commits = page.history limit
     truncated = limit > 0 && commits.size == limit
-    pages = Fluence::PAGES.children1
+    tree = page_tree
     title = "History of #{page.title} - #{title()}"
     render "history.slang"
   end
@@ -41,7 +41,7 @@ class PagesController < ApplicationController
     body = page.read_at commit.oid
     body_html = Fluence::Markdown.to_html body
     writable = Fluence::ACL.permitted? current_user, page.url, Acl::Perm::Write
-    pages = Fluence::PAGES.children1
+    tree = page_tree
     title = "#{page.title} @ #{commit.short_oid} - #{title()}"
     render "revision.slang"
   rescue Fluence::Error404
@@ -52,7 +52,7 @@ class PagesController < ApplicationController
   private def show_diff(page, rev)
     commit = commit_or_redirect(page, rev) || return
     diff = page.diff commit.oid
-    pages = Fluence::PAGES.children1
+    tree = page_tree
     title = "Changes to #{page.title} @ #{commit.short_oid} - #{title()}"
     render "diff.slang"
   end
@@ -91,8 +91,7 @@ class PagesController < ApplicationController
     groups_write = Fluence::ACL.groups_having_any_access_to page.url, Acl::Perm::Write, true
     title = "#{page.title} - #{title()}"
 
-    # For menu on the left
-    pages = Fluence::PAGES.children1
+    tree = page_tree
 
     render "show.slang"
   end
@@ -201,7 +200,7 @@ class PagesController < ApplicationController
   # get /sitemap
   def sitemap
     acl_permit! :read
-    pages = Fluence::PAGES.children1
+    tree = page_tree
     media = Fluence::MEDIA.children1
     title = "Sitemap - #{title()}"
     render "sitemap.slang"
