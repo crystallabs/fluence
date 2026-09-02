@@ -3,7 +3,9 @@ WORKDIR /app
 COPY shard.yml shard.lock ./
 RUN shards install --production
 COPY . .
-RUN crystal build --release --static -o bin/fluence src/fluence.cr
+# bin/ is excluded by .dockerignore and the compiler does not create the
+# output directory itself.
+RUN mkdir -p bin && crystal build --release --static -o bin/fluence src/fluence.cr
 
 FROM alpine:3.22
 # git is required at runtime: wiki content lives in a git repository in
