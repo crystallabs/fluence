@@ -79,3 +79,29 @@ describe Fluence::Catalog do
     expect_raises(Fluence::Error403) { Fluence::Media.new "../../etc/passwd" }
   end
 end
+
+describe Fluence::Catalog do
+  it "breaks title ties by URL closeness even when a candidate URL is shorter" do
+    with_each_storage do |storage, kind|
+      Fluence::Page.new("docs").update! SPEC_USER, "# Docs\n"
+      Fluence::Page.new("other/docs").update! SPEC_USER, "# Docs\n"
+
+      _, url = Fluence::PAGES.find("Docs", Fluence::Page.new("docs/guide"))
+      url.should eq "/pages/docs"
+    end
+  end
+
+  it "lists only names that are reachable by URL" do
+    with_each_storage do |storage, kind|
+      storage.write "pages/README.md", "# Read Me\n", SPEC_USER, "pushed"
+      storage.write "pages/My Notes.md", "# My Notes\n", SPEC_USER, "pushed"
+      storage.write "pages/docs/user-guide.md", "# Guide\n", SPEC_USER, "pushed"
+      storage.write "media/docs/user-guide/Shot 1.png", "x", SPEC_USER, "pushed"
+      storage.write "media/docs/user-guide/shot-2.PNG", "x", SPEC_USER, "pushed"
+
+      Fluence::PAGES.names.should eq ["docs/user-guide"]
+      Fluence::PAGES.titles.should eq({"docs/user-guide" => "Guide"})
+      Fluence::MEDIA.names.should eq ["docs/user-guide/shot-2.PNG"]
+    end
+  end
+end

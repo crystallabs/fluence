@@ -80,7 +80,7 @@ module Fluence
 
     def log(path : String, limit : Int32 = 0) : Array(Commit)
       status, output = git log_args(path, limit)
-      status.success? ? parse_log(output) : [] of Commit
+      status.success? ? parse_log(output, path) : [] of Commit
     end
 
     def read_at(path : String, rev : String) : String
@@ -106,12 +106,14 @@ module Fluence
 
     def headings(prefix : String) : Hash(String, String)
       ret = {} of String => String
-      status, output = git ["grep", "-I", "-m1", "--untracked", "-e", "^# ", "--", prefix]
+      # -z prints the path verbatim (non-ASCII names are not quoted), NUL-terminated.
+      status, output = git ["grep", "-I", "-m1", "-z", "--untracked", "-e", "^# ", "--", prefix]
       return ret unless status.success?
       output.each_line do |line|
-        path, _, heading = line.partition(":# ")
-        next if heading.empty?
-        ret[path] = heading.strip
+        path, sep, text = line.partition('\0')
+        heading = text.lchop("# ").strip
+        next if sep.empty? || heading.empty?
+        ret[path] = heading
       end
       ret
     end

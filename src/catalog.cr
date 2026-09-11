@@ -134,7 +134,7 @@ module Fluence
     # Computes the amount of common chars at the beginning of each string
     def self.url_closeness(from : String, to : String)
       from.size.times do |i|
-        return i if from[i] != to[i]
+        return i if i >= to.size || from[i] != to[i]
       end
       from.size
     end

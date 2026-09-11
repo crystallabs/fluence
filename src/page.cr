@@ -41,10 +41,12 @@ class Fluence::Page < Fluence::File
 	end
 
 	# Translates a storage path ("pages/test/title.md") into a page name
-	# ("test/title"); nil for paths that are not wiki pages.
+	# ("test/title"); nil for paths that are not wiki pages, or whose name
+	# is not addressable by URL (see `File.canonical_name?`).
 	def self.storage_path_to_name(path : String) : String?
 		return nil unless path.starts_with?("pages/") && path.ends_with?(".md")
-		path.lchop("pages/").chomp(".md")
+		name = path.lchop("pages/").chomp(".md")
+		name if canonical_name?(name)
 	end
 
 	# Content a new page starts with in the editor: a heading made from the
@@ -83,9 +85,18 @@ class Fluence::Page < Fluence::File
 		Fluence::PAGES.names.any? &.starts_with?(prefix)
 	end
 
-	# Storage paths of this page's attachments ("media/<name>/...").
+	# Names of the existing pages below this one.
+	private def subpage_names : Array(String)
+		prefix = @name + "/"
+		Fluence::PAGES.names.select &.starts_with?(prefix)
+	end
+
+	# Storage paths of this page's attachments: everything under
+	# "media/<name>/" except what belongs to a subpage, whose attachments
+	# are its own and stay with it.
 	def attachment_paths : Array(String)
-		storage.list "media/#{@name}/"
+		reserved = subpage_names.map { |name| "media/#{name}/" }
+		storage.list("media/#{@name}/").reject { |path| reserved.any? { |dir| path.starts_with? dir } }
 	end
 
 	# Renames the page without modifying the current Page object. The
@@ -104,13 +115,15 @@ class Fluence::Page < Fluence::File
 	# attachments) are rewritten in all other pages too.
 	def rename!(user : Fluence::User, new_name, overwrite = false, subtree = false, intlinks : Bool? = nil)
 		old_name = @name
+		# Attachments of subpages do not move, so links to them stay as well.
+		keep = subpage_names.map { |name| media_url_for name }
 		new_page = rename user, new_name, overwrite
 		@path = new_page.path
 		@name = new_page.name
 		@url = new_page.url
 
-		rewrite_attachment_links user, old_name, self
-		update_links user, old_name if intlinks
+		rewrite_attachment_links user, old_name, self, keep
+		update_links user, old_name, keep if intlinks
 		process!
 
 		self
@@ -122,23 +135,25 @@ class Fluence::Page < Fluence::File
 	end
 
 	# Rewrites links to attachments of the page formerly named *old_name*
-	# in *page* to their new location. No-op when nothing changes.
-	private def rewrite_attachment_links(user : Fluence::User, old_name : String, page : Page)
+	# in *page* to their new location, except links under the *keep* URL
+	# prefixes (attachments of subpages). No-op when nothing changes.
+	private def rewrite_attachment_links(user : Fluence::User, old_name : String, page : Page, keep : Array(String))
 		content = page.read rescue return
-		updated = Page::InternalLinks.rewrite_prefix content, media_url_for(old_name), media_url_for(@name)
+		updated = Page::InternalLinks.rewrite_prefix content, media_url_for(old_name), media_url_for(@name), except: keep
 		return if updated == content
 		page.write user, updated, nil, "Rewrite attachment links after renaming page #{old_name} -> #{@name}"
 	end
 
 	# Rewrites markdown links resolving to *old_name*, and links to its
-	# attachments, in all other pages to point at this page's current name.
-	private def update_links(user : Fluence::User, old_name : String)
+	# attachments (but not those under *keep*), in all other pages to point
+	# at this page's current name.
+	private def update_links(user : Fluence::User, old_name : String, keep : Array(String))
 		Fluence::PAGES.names.each do |name|
 			next if name == @name
 			page = Fluence::Page.new name
 			content = page.read rescue next
 			updated = Page::InternalLinks.rewrite_links content, name, old_name, @url
-			updated = Page::InternalLinks.rewrite_prefix updated, media_url_for(old_name), media_url_for(@name)
+			updated = Page::InternalLinks.rewrite_prefix updated, media_url_for(old_name), media_url_for(@name), except: keep
 			next if updated == content
 			page.write user, updated, nil, "Update links after renaming page #{old_name} -> #{@name}"
 		end

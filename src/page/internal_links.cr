@@ -43,12 +43,15 @@ class Fluence::Page < Fluence::File
 
     # Rewrites link and image targets starting with *old_prefix* followed
     # by "/" (e.g. the URL of a page's attachments, "/media/old-name") to
-    # start with *new_prefix* instead. Returns the updated content.
-    def self.rewrite_prefix(content : String, old_prefix : String, new_prefix : String) : String
+    # start with *new_prefix* instead; targets under any of the *except*
+    # prefixes are left alone. Returns the updated content.
+    def self.rewrite_prefix(content : String, old_prefix : String, new_prefix : String,
+                            except : Array(String) = [] of String) : String
       result = String::Builder.new content.bytesize
       pos = 0
       each_target(content, LINK_OR_IMAGE) do |target_start, target_end, target|
         next unless target.starts_with? "#{old_prefix}/"
+        next if except.any? { |prefix| target.starts_with? "#{prefix}/" }
         result << content[pos...target_start] << new_prefix << target.lchop(old_prefix)
         pos = target_end
       end

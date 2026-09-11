@@ -8,9 +8,11 @@ class PagesController < ApplicationController
   #   ?rev=<oid>  page content as of that commit
   #   ?diff=<oid> what that commit changed in the page
   def show
-    acl_permit! :read
-    flash["danger"] = params.query["flash.danger"] if params.query["flash.danger"]?
+    # Permissions are checked against the page's canonical URL rather than
+    # the path as typed: /pages/Secret and /pages/secr%65t are "secret".
     page = Fluence::Page.new params.url["path"]
+    acl_permit! :read, page.url
+    flash["danger"] = params.query["flash.danger"] if params.query["flash.danger"]?
     page.process! if page.exists?
 
     if params.query.has_key? "history"
@@ -38,7 +40,7 @@ class PagesController < ApplicationController
 
   private def show_revision(page, rev)
     commit = commit_or_redirect(page, rev) || return
-    body = page.read_at commit.oid
+    body = page.read_at commit
     body_html = Fluence::Markdown.to_html body
     writable = Fluence::ACL.permitted? current_user, page.url, Acl::Perm::Write
     tree = page_tree
@@ -51,7 +53,7 @@ class PagesController < ApplicationController
 
   private def show_diff(page, rev)
     commit = commit_or_redirect(page, rev) || return
-    diff = page.diff commit.oid
+    diff = page.diff commit
     tree = page_tree
     title = "Changes to #{page.title} @ #{commit.short_oid} - #{title()}"
     render "diff.slang"
@@ -114,8 +116,8 @@ class PagesController < ApplicationController
 
   # post /pages/*path
   def update
-    acl_permit! :write
     page = Fluence::Page.new params.url["path"]
+    acl_permit! :write, page.url
     page.process! if page.exists?
     if params.body["rename"]?
       update_rename(page)
@@ -264,8 +266,8 @@ class PagesController < ApplicationController
   # page; several are shown one after another, so that e.g. each team
   # member's ".../calendar" page appears together on /titles/calendar.
   def titles
-    acl_permit! :read
     slug = Fluence::Page.sanitize(params.url["slug"].to_s).strip "/"
+    acl_permit! :read, "#{Fluence::OPTIONS.titles_prefix}/#{slug}"
     pages = Fluence::PAGES.with_slug(slug).select do |page|
       Fluence::ACL.permitted?(current_user, page.url, Acl::Perm::Read)
     end

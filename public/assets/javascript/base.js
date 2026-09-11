@@ -121,7 +121,7 @@ Fluence.mde_options = function(can_edit) {
 	};
 	if(can_edit) {
 		options["toolbar"].push(
-			{ name: "preview", action: Fluence.editor.togglePreview, className: "fa fa-eye", noDisable: true, title: "Preview" },
+			{ name: "preview", action: Fluence.editor.togglePreview, className: "fa fa-eye", noDisable: true, title: "View" },
 			"side-by-side",
 			"|",
 			"bold",
@@ -148,13 +148,14 @@ Fluence.mde_options = function(can_edit) {
 	return options
 }
 
-// Switches the editor between preview and edit mode. Save and the change
-// summary only make sense while editing, so they are hidden in preview.
+// Switches the editor between view mode (EasyMDE's preview: the rendered
+// page) and edit mode. Save and the change summary only make sense while
+// editing, so they are hidden in view mode.
 Fluence.editor.togglePreview = function(){
 	editor.togglePreview();
 	Fluence.editor.isPreviewActive = !Fluence.editor.isPreviewActive;
 	var editing = !Fluence.editor.isPreviewActive;
-	document.getElementById("button_toggle").textContent = editing ? "Preview" : "Edit";
+	document.getElementById("button_toggle").textContent = editing ? "View" : "Edit";
 	document.getElementById("button_save").hidden = !editing;
 	document.getElementById("edit-extras").hidden = !editing;
 	if (editing) Fluence.editor.startEditing();
@@ -165,7 +166,7 @@ Fluence.editor.togglePreview = function(){
 // the attachment URL; the server answers JSON when asked for it.
 Fluence.deleteAttachment = function(button, name) {
 	if (!confirm("Really delete attachment `" + name + "`?")) return false;
-	var row = button.closest(".row");
+	var row = button.closest("li");
 	fetch(button.formAction, {
 		method: "POST",
 		headers: { "Accept": "application/json" },
@@ -214,9 +215,8 @@ Fluence.upload = function(form) {
 // A successfully uploaded attachment: link plus a Delete button,
 // matching the server-rendered rows in views/pages/show.slang.
 Fluence.attachmentRow = function(name, url) {
-	var row = Fluence.appendAttachment(name, "row border-bottom", "");
-	var link = row.querySelector("a");
-	link.href = url;
+	var row = Fluence.appendAttachment(name, "");
+	row.querySelector("a").href = url;
 
 	var hidden = document.createElement("input");
 	hidden.type = "hidden";
@@ -224,7 +224,7 @@ Fluence.attachmentRow = function(name, url) {
 	hidden.value = name;
 
 	var button = document.createElement("button");
-	button.className = "btn btn-sm btn-danger my-1";
+	button.className = "btn btn-sm btn-outline-danger py-0 ms-2";
 	button.type = "submit";
 	button.name = "delete";
 	button.value = "Delete";
@@ -234,33 +234,32 @@ Fluence.attachmentRow = function(name, url) {
 		return Fluence.deleteAttachment(button, name);
 	};
 
-	var right = row.lastElementChild;
-	right.appendChild(hidden);
-	right.appendChild(button);
+	row.appendChild(hidden);
+	row.appendChild(button);
 }
 
 Fluence.attachmentError = function(name, error) {
-	var row = Fluence.appendAttachment(name, "row border-bottom text-danger", "FAILED");
+	var row = Fluence.appendAttachment(name, "text-danger");
+	var note = document.createElement("span");
+	note.className = "small ms-2";
+	note.textContent = "FAILED";
+	row.appendChild(note);
 	row.title = error || "Upload failed";
 }
 
-Fluence.appendAttachment = function(name, rowClass, rightText) {
-	var row = document.createElement("div");
-	row.className = rowClass;
+// Appends a row to the attachment list (hiding the "None." note) and
+// returns it; the caller adds the delete button or the failure note.
+Fluence.appendAttachment = function(name, extraClass) {
+	var row = document.createElement("li");
+	row.className = "d-flex align-items-center mb-1" + (extraClass ? " " + extraClass : "");
 
-	var left = document.createElement("div");
-	left.className = "col-9";
 	var link = document.createElement("a");
-	link.className = "list-group-item";
+	link.className = "me-auto text-break";
 	link.textContent = name;
-	left.appendChild(link);
+	row.appendChild(link);
 
-	var right = document.createElement("div");
-	right.className = "col-3";
-	right.textContent = rightText;
-
-	row.appendChild(left);
-	row.appendChild(right);
+	var none = document.getElementById("no-attachments");
+	if (none) none.hidden = true;
 	document.getElementById("attachments").appendChild(row);
 	return row;
 }

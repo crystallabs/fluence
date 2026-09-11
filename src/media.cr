@@ -41,10 +41,12 @@ class Fluence::Media < Fluence::File
 	end
 
 	# Translates a storage path ("media/test/file.png") into a media name
-	# ("test/file.png"); nil for paths outside the media subtree.
+	# ("test/file.png"); nil for paths outside the media subtree, or whose
+	# name is not addressable by URL (see `File.canonical_name?`).
 	def self.storage_path_to_name(path : String) : String?
 		return nil unless path.starts_with?("media/")
-		path.lchop("media/")
+		name = path.lchop("media/")
+		name if canonical_name?(name)
 	end
 
 	# Media have no content-derived titles; names are used instead.

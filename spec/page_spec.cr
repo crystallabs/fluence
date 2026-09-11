@@ -62,3 +62,23 @@ describe Fluence::Page do
     end
   end
 end
+
+describe Fluence::Page do
+  it "leaves subpages' attachments and the links to them alone when the parent is renamed" do
+    with_each_storage do |storage, kind|
+      Fluence::Page.new("a").update! SPEC_USER, "# A\n![own](/media/a/own.png) ![sub](/media/a/b/pic.png)\n"
+      Fluence::Page.new("a/b").update! SPEC_USER, "# B\n![pic](/media/a/b/pic.png) ![up](/media/a/own.png)\n"
+      Fluence::Media.new("a/own.png").write SPEC_USER, "OWN"
+      Fluence::Media.new("a/b/pic.png").write SPEC_USER, "PIC"
+      Fluence::Media.new("a/nested/deep.txt").write SPEC_USER, "DEEP"
+
+      Fluence::Page.new("a").attachment_paths.should eq ["media/a/nested/deep.txt", "media/a/own.png"]
+
+      Fluence::Page.new("a").process!.rename! SPEC_USER, "c", intlinks: true
+
+      storage.list("media").should eq ["media/a/b/pic.png", "media/c/nested/deep.txt", "media/c/own.png"]
+      Fluence::Page.new("c").read.should eq "# A\n![own](/media/c/own.png) ![sub](/media/a/b/pic.png)\n"
+      Fluence::Page.new("a/b").read.should eq "# B\n![pic](/media/a/b/pic.png) ![up](/media/c/own.png)\n"
+    end
+  end
+end

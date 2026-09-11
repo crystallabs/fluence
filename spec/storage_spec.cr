@@ -170,3 +170,23 @@ describe Fluence::Storage do
     end
   end
 end
+
+describe Fluence::Storage do
+  it "reports the path a file had at each commit" do
+    with_each_storage do |storage, kind|
+      storage.write "pages/h.md", "# H\nfirst\n", SPEC_USER, "Create page h"
+      storage.rename "pages/h.md", "pages/moved.md", SPEC_USER, "Rename page h -> moved"
+
+      log = storage.log("pages/moved.md")
+      log.map(&.path).should eq ["pages/moved.md", "pages/h.md"]
+      storage.read_at(log[1].path, log[1].oid).should eq "# H\nfirst\n"
+    end
+  end
+
+  it "finds headings of files with non-ASCII names" do
+    with_each_storage do |storage, kind|
+      storage.write "pages/straße-日本.md", "# Unicode Title\n", SPEC_USER, "create"
+      storage.headings("pages").should eq({"pages/straße-日本.md" => "Unicode Title"})
+    end
+  end
+end

@@ -22,8 +22,10 @@ module Fluence
   abstract class Storage
     COMMITTER = {name: "Fluence Wiki", email: "fluence@localhost"}
 
-    # One commit in the history of a file, as returned by `#log`.
-    record Commit, oid : String, author : String, time : Time, subject : String, body : String do
+    # One commit in the history of a file, as returned by `#log`. *path* is
+    # where the file lived at that commit: `#log` follows renames, so it can
+    # differ from the path the history was asked for.
+    record Commit, oid : String, author : String, time : Time, subject : String, body : String, path : String do
       def short_oid : String
         oid[0, 8]
       end
@@ -34,8 +36,10 @@ module Fluence
     # revision coming from a URL can never be mistaken for a git option.
     REV = /\A[0-9a-f]{4,40}\z/
 
-    # Field and record separators of the `git log` format parsed by `#parse_log`.
-    LOG_FORMAT = "%H%x1f%an%x1f%at%x1f%s%x1f%b"
+    # Format of the `git log` output parsed by `#parse_log`: each commit
+    # starts with a record separator (0x1e) and its fields are separated by
+    # 0x1f; `--name-only -z` then appends the file's path after a NUL.
+    LOG_FORMAT = "%x1e%H%x1f%an%x1f%at%x1f%s%x1f%b"
 
     @@current : Storage?
 
@@ -117,15 +121,23 @@ module Fluence
     abstract def git_directory : String
 
     protected def log_args(path : String, limit : Int32) : Array(String)
-      args = ["log", "-z", "--follow", "--format=#{LOG_FORMAT}"]
+      args = ["log", "-z", "--follow", "--name-only", "--format=#{LOG_FORMAT}"]
       args << "--max-count=#{limit}" if limit > 0
       args + ["--", path]
     end
 
-    protected def parse_log(output : String) : Array(Commit)
-      output.split('\0', remove_empty: true).map do |record|
-        oid, author, time, subject, body = record.split('\u001f', 5)
-        Commit.new oid, author, Time.unix(time.to_i64), subject, body.to_s.strip
+    # Parses `git log` output in `LOG_FORMAT` for the history of *path*.
+    # A commit listing no file (a merge) is taken to hold the file where
+    # the next newer commit did.
+    protected def parse_log(output : String, path : String) : Array(Commit)
+      last_path = path
+      output.split('\u001e', remove_empty: true).map do |record|
+        fields, _, files = record.partition('\0')
+        oid, author, time, subject, body = fields.split('\u001f', 5)
+        if file = files.split('\0', remove_empty: true).map(&.strip).find(&.presence)
+          last_path = file
+        end
+        Commit.new oid, author, Time.unix(time.to_i64), subject, body.to_s.strip, last_path
       end
     end
 

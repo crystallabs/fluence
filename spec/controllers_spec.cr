@@ -569,3 +569,171 @@ describe "save and continue over HTTP" do
     end
   end
 end
+
+describe "canonical URLs and the ACL" do
+  it "applies page rules regardless of case, encoding, or trailing slash in the URL" do
+    with_each_storage do |_, _|
+      Fluence::Page.new("secret").update! SPEC_USER, "# Secret\n\ntop-secret-body\n"
+      client = SpecClient.login "editor", "sekrit123"
+
+      Fluence::ACL["user"]["#{Fluence::OPTIONS.pages_prefix}/secret"] = Acl::Perm::None
+      begin
+        {"/pages/secret", "/pages/Secret", "/pages/secr%65t", "/pages/secret/"}.each do |url|
+          response = client.get url
+          response.status_code.should eq 302
+          response.body.should_not contain "top-secret-body"
+          client.post(url, {"body" => "# Defaced\n"}).status_code.should eq 302
+        end
+        Fluence::Page.new("secret").read.should eq "# Secret\n\ntop-secret-body\n"
+
+        headers, body = multipart_upload "Secret", "evil.txt", "x"
+        client.post("/media/upload", headers, body).body.should contain %("success":false)
+        Fluence::Storage.current.list("media").should be_empty
+      ensure
+        Fluence::ACL["user"].delete "#{Fluence::OPTIONS.pages_prefix}/secret"
+      end
+
+      client.get("/pages/Secret").body.should contain "top-secret-body"
+    end
+  end
+
+  it "applies media rules to the attachment's canonical URL" do
+    with_each_storage do |_, _|
+      Fluence::Media.new("locked/f.txt").update! SPEC_USER, "hidden-bytes"
+
+      Fluence::ACL["guest"]["#{Fluence::OPTIONS.media_prefix}/locked/*"] = Acl::Perm::None
+      begin
+        {"/media/locked/f.txt", "/media/%6Cocked/f.txt"}.each do |url|
+          response = SpecClient.new.get url
+          response.status_code.should eq 302
+          response.body.should_not contain "hidden-bytes"
+        end
+      ensure
+        Fluence::ACL["guest"].delete "#{Fluence::OPTIONS.media_prefix}/locked/*"
+      end
+
+      SpecClient.new.get("/media/locked/f.txt").body.should eq "hidden-bytes"
+    end
+  end
+
+  it "stores uploads under the page's canonical name" do
+    with_each_storage do |_, _|
+      client = SpecClient.login "editor", "sekrit123"
+      headers, body = multipart_upload "Docs/Notes", "a.txt", "A"
+      client.post("/media/upload", headers, body).body.should contain %("url":"/media/docs/notes/a.txt")
+      Fluence::Media.new("docs/notes/a.txt").read.should eq "A"
+    end
+  end
+end
+
+describe "attachment list on a page" do
+  it "lists the page's own attachments even when subpages have some" do
+    with_each_storage do |_, _|
+      Fluence::Page.new("parent").update! SPEC_USER, "# Parent\n"
+      Fluence::Page.new("parent/child").update! SPEC_USER, "# Child\n"
+      Fluence::Media.new("parent/own.txt").update! SPEC_USER, "own"
+      Fluence::Media.new("parent/child/pic.png").update! SPEC_USER, "png"
+
+      response = SpecClient.new.get "/pages/parent"
+      response.status_code.should eq 200
+      response.body.should contain %(href="/media/parent/own.txt")
+      response.body.should_not contain "/media/parent/child/pic.png"
+    end
+  end
+end
+
+describe "deleted accounts" do
+  it "treats the session of a deleted user as guest instead of failing" do
+    with_each_storage do |_, _|
+      Fluence::Page.new("home").update! SPEC_USER, "# Home\n"
+      client = SpecClient.login "doomed", "sekrit123"
+      client.get("/pages/home").body.should contain "Logged in as"
+
+      Fluence::USERS.transaction!(&.delete("doomed"))
+
+      response = client.get "/pages/home"
+      response.status_code.should eq 200
+      response.body.should_not contain "Logged in as"
+      response.body.should_not contain "<textarea"
+      client.get("/users/logout").status_code.should eq 302
+    end
+  end
+end
+
+describe "page history across renames" do
+  it "shows revisions and diffs from before a rename" do
+    with_each_storage do |_, _|
+      client = SpecClient.login "editor", "sekrit123"
+      client.post "/pages/before", {"body" => "# Before\nfirst\n"}
+      client.post "/pages/before", {"body" => "# Before\nsecond\n"}
+      client.post "/pages/before", {"rename" => "rename", "input-page-name" => "after"}
+
+      commits = Fluence::Page.new("after").history
+      commits.map(&.subject).should eq ["Rename page before -> after", "Update page before", "Create page before"]
+      commits.map(&.path).should eq ["pages/after.md", "pages/before.md", "pages/before.md"]
+
+      response = SpecClient.new.get "/pages/after?rev=#{commits[2].oid}"
+      response.status_code.should eq 200
+      response.body.should contain "<p>first</p>"
+
+      response = SpecClient.new.get "/pages/after?diff=#{commits[1].oid}"
+      response.status_code.should eq 200
+      response.body.should contain %(<span class="diff-add">+second</span>)
+    end
+  end
+end
+
+describe "attachment list markup" do
+  it "renders attachments as a plain list with a View toggle and Up/Prev/Next order" do
+    with_each_storage do |_, _|
+      Fluence::Page.new("att-list").update! SPEC_USER, "# Att List\n"
+      Fluence::Media.new("att-list/a.txt").update! SPEC_USER, "A"
+      client = SpecClient.login "editor", "sekrit123"
+
+      body = client.get("/pages/att-list").body
+      body.should contain %(<ul id="attachments" class="list-unstyled mb-0">)
+      body.should contain %(<a class="me-auto text-break" href="/media/att-list/a.txt">a.txt</a>)
+      body.should_not contain "list-group-item"
+      body.should_not contain "border-bottom"
+      body.should contain %(<div id="no-attachments" class="small text-body-secondary" hidden="hidden">None.</div>)
+      body.should contain %(id="button_toggle" onclick="Fluence.editor.togglePreview()">View</button>)
+      body.index!("↑ Up").should be < body.index!("‹ Prev")
+
+      SpecClient.new.get("/pages/att-list").body.should_not contain %(name="delete")
+      Fluence::Page.new("no-att").update! SPEC_USER, "# No Att\n"
+      SpecClient.new.get("/pages/no-att").body.should contain %(<div id="no-attachments" class="small text-body-secondary">None.</div>)
+    end
+  end
+end
+
+describe "parent pages after renaming a leaf with attachments" do
+  it "keep rendering" do
+    with_each_storage do |_, _|
+      Fluence::Page.new("1").update! SPEC_USER, "# One\n"
+      Fluence::Page.new("1/2").update! SPEC_USER, "# Two\n"
+      Fluence::Page.new("1/2/3").update! SPEC_USER, "# Three\n"
+      Fluence::Media.new("1/2/3/f.txt").update! SPEC_USER, "F"
+      client = SpecClient.login "editor", "sekrit123"
+
+      client.post("/pages/1/2/3", {"rename" => "rename", "input-page-name" => "1/2/3x"}).status_code.should eq 302
+      {"/pages/1", "/pages/1/2", "/pages/1/2/3x", "/sitemap"}.each do |url|
+        client.get(url).status_code.should eq 200
+      end
+      client.get("/pages/1/2/3x").body.should contain %(href="/media/1/2/3x/f.txt")
+    end
+  end
+end
+
+describe "sidebar of a page that does not exist" do
+  it "says so instead of showing the page sections" do
+    with_each_storage do |_, _|
+      body = SpecClient.login("editor", "sekrit123").get("/pages/not-yet").body
+      body.should contain "This page does not exist yet. Click Save to create it."
+      body.should_not contain %(id="page-toc")
+
+      body = SpecClient.new.get("/pages/not-yet").body
+      body.should contain "This page does not exist yet."
+      body.should_not contain "Click Save"
+    end
+  end
+end

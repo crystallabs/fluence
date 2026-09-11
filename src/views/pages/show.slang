@@ -26,23 +26,28 @@
             p.small.text-body-secondary Insufficient permission to upload new attachments.
         .col-6
           h6.section-title.mt-3 Attachments
+          / Directory entries (attachments of subpages) carry no entry and are skipped.
+          - attachments = media.children1.values.compact_map(&.[1])
           form#manage-attachments method="post"
-            #attachments.list-group.list-group-flush
-              - media.children1.each do |name, spec|
-                - m = spec[1].not_nil!
-                .row.border-bottom
-                  .col-9
-                    a.list-group-item href="#{m.url}" = m.title || m.name
-                  .col-3
-                    input type="hidden" name="media-name" value="#{m.title || m.name}"
-                    - if writable
-                      button.btn.btn-sm.btn-danger.my-1 name="delete" value="Delete" type="submit" formaction="#{Fluence::OPTIONS.media_prefix}/#{page.name}/#{m.title || m.name}" onclick="return Fluence.deleteAttachment(this, '#{m.title || m.name}')" Delete
+            / Shown while the list is empty; uploads made on the page hide it.
+            - if attachments.empty?
+              .small.text-body-secondary#no-attachments None.
+            - else
+              .small.text-body-secondary#no-attachments hidden="hidden" None.
+            ul#attachments.list-unstyled.mb-0
+              - attachments.each do |m|
+                - filename = m.title || m.name
+                li.d-flex.align-items-center.mb-1
+                  a.me-auto.text-break href="#{m.url}" = filename
+                  - if writable
+                    input type="hidden" name="media-name" value="#{filename}"
+                    button.btn.btn-sm.btn-outline-danger.py-0.ms-2 name="delete" value="Delete" type="submit" formaction="#{Fluence::OPTIONS.media_prefix}/#{page.name}/#{filename}" onclick="return Fluence.deleteAttachment(this, '#{filename}')" Delete
     #sidebar.col
       - if writable
         section#page-content
           h6.section-title Page Content
           .d-flex.gap-2
-            button.btn.btn-sm.btn-outline-success.flex-fill type="button" id="button_toggle" onclick="Fluence.editor.togglePreview()" Preview
+            button.btn.btn-sm.btn-outline-success.flex-fill type="button" id="button_toggle" onclick="Fluence.editor.togglePreview()" View
             button.btn.btn-sm.btn-success.flex-fill name="save" id="button_save" type="submit" value="save" form="edit-page" Save
           #edit-extras
             input.form-control.form-control-sm.mt-2 type="text" name="summary" id="input-summary" form="edit-page" placeholder="Change summary (optional)" maxlength="500" autocomplete="off"
@@ -102,6 +107,13 @@
             tr
               th.fw-normal.text-body-secondary Write
               td = groups_write.join ", "
+      - else
+        section#page-missing
+          h6.section-title Page
+          - if writable
+            .small.text-body-secondary This page does not exist yet. Click Save to create it.
+          - else
+            .small.text-body-secondary This page does not exist yet.
 script
   - if writable
     = "Fluence.editor.init(#{open_in_edit});"

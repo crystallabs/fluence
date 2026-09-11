@@ -48,12 +48,16 @@ abstract class Fluence::File
   # class' subtree (no "..", absolute paths, etc.), raising `Error403`
   # otherwise.
   def jail!
-    prefix = "#{storage_prefix}/"
-    normalized = Path.posix(@path).normalize.to_s
-    unless normalized == @path && @path.starts_with?(prefix) && @path.size > prefix.size
-      raise Error403.new "Out of chroot (#{@path} on #{prefix})"
-    end
+    jail_check @path
     self
+  end
+
+  private def jail_check(path : String)
+    prefix = "#{storage_prefix}/"
+    normalized = Path.posix(path).normalize.to_s
+    unless normalized == path && path.starts_with?(prefix) && path.size > prefix.size
+      raise Error403.new "Out of chroot (#{path} on #{prefix})"
+    end
   end
 
   # Reads the content.
@@ -131,6 +135,25 @@ abstract class Fluence::File
     storage.diff @path, rev
   end
 
+  # Content as of *commit* (from `#history`), read from the path the entry
+  # had at that commit, so revisions from before a rename resolve.
+  def read_at(commit : Fluence::Storage::Commit) : String
+    storage.read_at historical_path(commit), commit.oid
+  end
+
+  # Unified diff of what *commit* (from `#history`) did to the entry, at
+  # the path it had at that commit.
+  def diff(commit : Fluence::Storage::Commit) : String
+    storage.diff historical_path(commit), commit.oid
+  end
+
+  # The entry's path at *commit*, held to the same subtree as the current one.
+  private def historical_path(commit : Fluence::Storage::Commit) : String
+    jail!
+    jail_check commit.path
+    commit.path
+  end
+
   # Content size in bytes; 0 if absent.
   def size : Int64
     storage.size(@path) || 0_i64
@@ -162,5 +185,13 @@ abstract class Fluence::File
 
   def self.title_to_slug(title : String) : String
     title.gsub(/[^[:alnum:]^\/]+/, "-").downcase
+  end
+
+  # Whether *name* is what `sanitize` makes of it, i.e. whether an entry
+  # under this name can be addressed by URL. Content that reaches the
+  # repository by other means (a `git push`) under any other name cannot
+  # be, so it is left out of listings rather than shown as unreachable.
+  def self.canonical_name?(name : String) : Bool
+    !name.empty? && !name.starts_with?('/') && !name.ends_with?('/') && title_to_slug(name) == name
   end
 end

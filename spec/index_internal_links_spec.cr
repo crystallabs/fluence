@@ -40,3 +40,12 @@ describe Fluence::Page::InternalLinks do
     Fluence::Page::InternalLinks.rewrite_prefix("plain", "/media/old", "/media/new").should eq "plain"
   end
 end
+
+describe Fluence::Page::InternalLinks do
+  it "leaves excepted prefixes alone when rewriting" do
+    content = "![a](/media/old/a.png) ![b](/media/old/sub/b.png)"
+    updated = Fluence::Page::InternalLinks.rewrite_prefix content, "/media/old", "/media/new", except: ["/media/old/sub"]
+
+    updated.should eq "![a](/media/new/a.png) ![b](/media/old/sub/b.png)"
+  end
+end

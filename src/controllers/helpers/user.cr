@@ -38,14 +38,18 @@ module Fluence::Helpers::User
     session.string?("user.name")
   end
 
-  # If the user is connected return an `Fluence::User`, else the default user (guest)
-  macro current_user
-    %name = user_signed_in?
-    if (%name.nil?)
-      Fluence::USERS.default || raise "User not signed in"
-    else
-      Fluence::USERS.find(%name)
+  # The signed-in `Fluence::User`, else the default user (guest). A session
+  # naming an account that no longer exists (deleted by an admin) is ended,
+  # so the request proceeds as guest instead of failing.
+  def current_user : Fluence::User
+    if name = user_signed_in?
+      if user = Fluence::USERS.find?(name)
+        return user
+      end
+      session.destroy
+      delete_login_cookies
     end
+    Fluence::USERS.default || raise "No default user configured"
   end
 
   macro acl_permit!(perm, path = request.path)

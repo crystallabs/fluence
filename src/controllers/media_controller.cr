@@ -1,8 +1,8 @@
 class MediaController < ApplicationController
   # get /media/*path
   def show
-    acl_permit! :read
     page = Fluence::Media.new params.url["path"]
+    acl_permit! :read, page.url
     show_show(page)
   end
 
@@ -21,8 +21,8 @@ class MediaController < ApplicationController
 
   # post /media/*path
   def update
-    acl_permit! :write
     page = Fluence::Media.new params.url["path"]
+    acl_permit! :write, page.url
     if params.body["rename"]?
       update_rename(page)
     elsif params.body["delete"]?
@@ -110,13 +110,21 @@ class MediaController < ApplicationController
     saved = nil
     error = nil
 
+    uses_login_cookies
     HTTP::FormData.parse(@env.request) do |part|
       case part.name
       when "pagename"
-        pagename = part.body.gets_to_end
-        page_path = File.join Fluence::OPTIONS.pages_prefix, pagename
-        unless Fluence::ACL.permitted?(current_user, page_path, Acl::Perm::Write)
-          error = "You are not permitted to access this resource (#{page_path}, write)."
+        # The page's canonical name and URL are what the permission and
+        # the storage location are based on, not the name as typed.
+        begin
+          page = Fluence::Page.new part.body.gets_to_end
+        rescue Fluence::Error403
+          error = "Invalid page name."
+          next
+        end
+        pagename = page.name
+        unless Fluence::ACL.permitted?(current_user, page.url, Acl::Perm::Write)
+          error = "You are not permitted to access this resource (#{page.url}, write)."
         end
       when "file"
         next if error
@@ -125,11 +133,11 @@ class MediaController < ApplicationController
           error = "Upload is missing the page name or file name."
           next
         end
-        media = Fluence::Media.new "#{pagename}/#{filename}"
         begin
+          media = Fluence::Media.new "#{pagename}/#{filename}"
           media.write current_user, part.body
           saved = media
-        rescue e : Fluence::Error409
+        rescue e : Fluence::Error403 | Fluence::Error409
           error = e.message
         end
       end

@@ -94,6 +94,8 @@ cd repo
 git push
 ```
 
+Files must be named the way the wiki names them, or they are not reachable through it and are left out of its listings: pages are `pages/<name>.md` where the name consists of lowercase letters, digits, and `-`, with `/` separating levels (for example `pages/docs/user-guide.md`), and attachments live under `media/<page name>/` with the same characters plus `.`, in any case. A pushed `pages/README.md` or `pages/My Notes.md` is therefore ignored; rename it to `pages/readme.md` or `pages/my-notes.md`.
+
 Authentication is HTTP Basic with the wiki username and password (git prompts for it, and credential helpers work as usual). Authorization uses the regular ACL, checked against the `/repo` URL: fetching/cloning requires **Read**, pushing requires **Write**. With the default ACLs of a fresh install this means any registered user can clone and pull, admins can also push, and anonymous users have no git access. To change that, add ACL rules on the path `/repo/*` — for example give the `user` group Write on `/repo/*` to let all registered users push, or the `guest` group Read on `/repo/*` to allow anonymous cloning.
 
 Note that git access is all-or-nothing per operation: a clone contains the entire repository and its full history, and a push can modify any page or media file. Per-page ACL rules (such as a `None` rule hiding `/pages/private/*` from some group) are enforced by the wiki UI, but not within git transfers — grant Read/Write on `/repo/*` only to groups that may see and change everything.
