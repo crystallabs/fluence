@@ -5,8 +5,13 @@ require "./page"
 # Internal links are plain markdown links ([title](/pages/name) or a
 # relative target), so no preprocessing pass is needed; see
 # `Page::InternalLinks` for how they are recognized and tracked.
+#
+# Rendering is `safe`: raw HTML in the content is omitted and link/image
+# targets with script-capable schemes (javascript:, vbscript:, data:
+# other than images) are dropped. Anyone allowed to edit a page would
+# otherwise be able to run script in every reader's browser.
 struct Fluence::Markdown
-  MARKD_OPTIONS = Markd::Options.new(gfm: true, autolink: true, tagfilter: true, emoji: true)
+  MARKD_OPTIONS = Markd::Options.new(gfm: true, autolink: true, tagfilter: true, emoji: true, safe: true)
 
   # HTMLRenderer whose headings carry an id matching the anchors the
   # table-of-contents helper generates (`Fluence::Page.sanitize` of the

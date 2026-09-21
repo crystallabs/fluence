@@ -64,6 +64,27 @@ describe Fluence::Page do
 end
 
 describe Fluence::Page do
+  it "deletes its attachments, but not those of subpages, along with the page" do
+    with_each_storage do |storage, kind|
+      Fluence::Page.new("a").update! SPEC_USER, "# A\n"
+      Fluence::Page.new("a/b").update! SPEC_USER, "# B\n"
+      Fluence::Media.new("a/own.png").write SPEC_USER, "OWN"
+      Fluence::Media.new("a/nested/deep.txt").write SPEC_USER, "DEEP"
+      Fluence::Media.new("a/b/pic.png").write SPEC_USER, "PIC"
+
+      Fluence::Page.new("a").delete SPEC_USER
+
+      Fluence::Page.new("a").exists?.should be_false
+      Fluence::Page.new("a/b").read.should eq "# B\n"
+      storage.list("media").should eq ["media/a/b/pic.png"]
+
+      commit = storage.log("media/a/own.png")[0]
+      commit.subject.should eq "Delete page a"
+      commit.body.should eq "Removed along:\n  media/a/nested/deep.txt\n  media/a/own.png"
+      storage.log("pages/a.md")[0].oid.should eq commit.oid
+    end
+  end
+
   it "leaves subpages' attachments and the links to them alone when the parent is renamed" do
     with_each_storage do |storage, kind|
       Fluence::Page.new("a").update! SPEC_USER, "# A\n![own](/media/a/own.png) ![sub](/media/a/b/pic.png)\n"

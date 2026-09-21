@@ -59,11 +59,14 @@ module Fluence
       end
     end
 
-    def delete(path : String, user : Fluence::User, message : String)
+    def delete(paths : Array(String), user : Fluence::User, message : String)
       @lock.synchronize do
-        ::File.delete abs(path)
-        prune_empty_dirs ::File.dirname(abs(path))
-        commit [path], user, message
+        paths.each { |path| raise Error404.new "No such file: #{path}" unless exists? path }
+        paths.each do |path|
+          ::File.delete abs(path)
+          prune_empty_dirs ::File.dirname(abs(path))
+        end
+        commit paths, user, message
       end
     end
 

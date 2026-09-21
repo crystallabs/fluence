@@ -616,6 +616,26 @@ describe "canonical URLs and the ACL" do
     end
   end
 
+  it "serves only harmless attachment types inline" do
+    with_each_storage do |_, _|
+      Fluence::Media.new("p/pic.png").update! SPEC_USER, "PNG"
+      Fluence::Media.new("p/evil.html").update! SPEC_USER, "<script>alert(1)</script>"
+      Fluence::Media.new("p/evil.svg").update! SPEC_USER, "<svg onload=alert(1)/>"
+
+      response = SpecClient.new.get "/media/p/pic.png"
+      response.headers["Content-Type"].should eq "image/png"
+      response.headers["X-Content-Type-Options"].should eq "nosniff"
+      response.headers["Content-Disposition"]?.should be_nil
+
+      {"/media/p/evil.html", "/media/p/evil.svg"}.each do |url|
+        response = SpecClient.new.get url
+        response.status_code.should eq 200
+        response.headers["X-Content-Type-Options"].should eq "nosniff"
+        response.headers["Content-Disposition"].should start_with "attachment; filename="
+      end
+    end
+  end
+
   it "stores uploads under the page's canonical name" do
     with_each_storage do |_, _|
       client = SpecClient.login "editor", "sekrit123"

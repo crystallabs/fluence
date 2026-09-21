@@ -85,7 +85,12 @@ module Fluence
     abstract def write(path : String, content : String | IO, user : Fluence::User, message : String)
 
     # Deletes the file at *path* and commits.
-    abstract def delete(path : String, user : Fluence::User, message : String)
+    def delete(path : String, user : Fluence::User, message : String)
+      delete [path], user, message
+    end
+
+    # Deletes every file in *paths* in one commit.
+    abstract def delete(paths : Array(String), user : Fluence::User, message : String)
 
     # Renames every `{old_path, new_path}` pair in *moves* in one commit.
     abstract def rename(moves : Array({String, String}), user : Fluence::User, message : String)

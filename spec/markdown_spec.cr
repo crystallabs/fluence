@@ -27,6 +27,18 @@ describe Fluence::Markdown do
   it "does not treat code block content as headings" do
     Fluence::Markdown.to_html("```\n# not a heading\n```\n").should_not contain "<h1"
   end
+
+  it "omits raw HTML and script-capable link targets" do
+    html = Fluence::Markdown.to_html("<img src=x onerror=alert(1)>\n\ntext <b onclick=alert(2)>bold</b>\n")
+    html.should_not contain "onerror"
+    html.should_not contain "onclick"
+    html.should contain "text"
+
+    html = Fluence::Markdown.to_html("[x](javascript:alert(1)) ![i](data:text/html,x) ![ok](data:image/png;base64,AA==)\n")
+    html.should_not contain "javascript:"
+    html.should_not contain "data:text/html"
+    html.should contain %(src="data:image/png;base64,AA==")
+  end
 end
 
 describe Fluence::WikilinkMigration do

@@ -64,12 +64,12 @@ module Fluence
       end
     end
 
-    def delete(path : String, user : Fluence::User, message : String)
+    def delete(paths : Array(String), user : Fluence::User, message : String)
       @lock.synchronize do
         retrying_conflict do
-          raise Error404.new "No such file: #{path}" unless exists? path
+          paths.each { |path| raise Error404.new "No such file: #{path}" unless exists? path }
           commit(user, message) do |index_env|
-            index_remove path, index_env
+            paths.each { |path| index_remove path, index_env }
           end
         end
       end

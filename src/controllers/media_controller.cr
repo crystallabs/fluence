@@ -15,8 +15,28 @@ class MediaController < ApplicationController
     end
 
     content = page.read
-    @env.response.content_type = MIME.from_filename?(page.name) || "application/octet-stream"
+    type = MIME.from_filename?(page.name) || "application/octet-stream"
+    @env.response.content_type = type
+    # Attachments are user-supplied. Anything a browser could execute in
+    # the wiki's origin (HTML, SVG, XML, scripts...) must be downloaded
+    # rather than displayed, and the declared type must not be sniffed
+    # into something else. Browsers still render an attachment-disposed
+    # image in an <img> tag, so embedding SVGs in pages keeps working.
+    @env.response.headers["X-Content-Type-Options"] = "nosniff"
+    unless inline_type? type
+      @env.response.headers["Content-Disposition"] = "attachment; filename=\"#{page.title.gsub(/["\\]/, "")}\""
+    end
     @env.response.write content.to_slice
+  end
+
+  # Media types that browsers display inline without running script
+  # from the file.
+  INLINE_TYPES = %w[image/png image/jpeg image/gif image/webp image/avif image/bmp
+    text/plain application/pdf]
+
+  private def inline_type?(type : String) : Bool
+    base = type.split(';')[0].strip.downcase
+    INLINE_TYPES.includes?(base) || base.starts_with?("audio/") || base.starts_with?("video/")
   end
 
   # post /media/*path

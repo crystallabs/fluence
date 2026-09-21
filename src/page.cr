@@ -99,6 +99,16 @@ class Fluence::Page < Fluence::File
 		storage.list("media/#{@name}/").reject { |path| reserved.any? { |dir| path.starts_with? dir } }
 	end
 
+	# Deletes the page together with its attachments (but not those of
+	# subpages, see `#attachment_paths`), in one commit.
+	def delete(user : Fluence::User)
+		jail!
+		attachments = attachment_paths
+		details = attachments.empty? ? nil : "Removed along:\n" + attachments.join("\n") { |path| "  #{path}" }
+		storage.delete [@path] + attachments, user, commit_message("Delete #{kind} #{@name}", nil, details)
+		self
+	end
+
 	# Renames the page without modifying the current Page object. The
 	# page's attachments move with it, in the same commit.
 	# Returns the new Page object.

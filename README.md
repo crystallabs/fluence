@@ -65,7 +65,7 @@ Static assets (stylesheets, scripts, logo) are served from the `public/` directo
 
 There is no index or cache: listings, titles, internal-link resolution, and search always operate on the current repository contents, so nothing can go out of sync.
 
-Page content is GitHub Flavored Markdown (tables, strikethrough, autolinks, emoji). Links between pages are ordinary markdown links — `[Title](/pages/name)`, or a target relative to the current page such as `[Title](sibling)`. To convert content written with the `[[wikilink]]` syntax to standard links, start Fluence once with `FLUENCE_MIGRATE_WIKILINKS=1` — it rewrites all affected pages, commits them, and exits.
+Page content is GitHub Flavored Markdown (tables, strikethrough, autolinks, emoji). Raw HTML in pages is not rendered, and attachments other than images, plain text, PDF, audio, and video are offered for download rather than displayed, so that no page or upload can run script in readers' browsers. Links between pages are ordinary markdown links — `[Title](/pages/name)`, or a target relative to the current page such as `[Title](sibling)`. To convert content written with the `[[wikilink]]` syntax to standard links, start Fluence once with `FLUENCE_MIGRATE_WIKILINKS=1` — it rewrites all affected pages, commits them, and exits.
 
 ## Page history
 
@@ -81,7 +81,7 @@ Besides its name, every page can be reached through its title at `/titles/<slug>
 
 Logged-in users have a settings page (their name in the navigation bar, or `/users/settings`) with preferences that are stored in `meta/users` and apply from any browser: whether pages open in edit or view mode (or follow the site's `open_*_in_edit` options), whether the editor starts in side-by-side preview and/or fullscreen, the delay before the editor stores a draft in the browser (0 disables drafts), and the color scheme (light, dark, or the browser's preference).
 
-Renaming a page moves its attachments (`media/<name>/...`) along with it in the same commit and rewrites the page's links to them; with "Update links" checked, links in other pages to the page and to its attachments are rewritten too.
+Renaming a page moves its attachments (`media/<name>/...`) along with it in the same commit and rewrites the page's links to them; with "Update links" checked, links in other pages to the page and to its attachments are rewritten too. Deleting a page deletes its attachments in the same commit. Attachments of subpages stay with the subpages in both cases.
 
 ## Git access over HTTP
 
