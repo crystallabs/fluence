@@ -40,6 +40,21 @@ module Fluence
       # to metadir/theme; override with FLUENCE_THEMEDIR.
       @themedir = ::File.expand_path ENV.fetch("FLUENCE_THEMEDIR") { ::File.join(@metadir, "theme") }
 
+      # Extra language codes pages can be translated into, e.g. "de,fr".
+      # A page's default-language content lives at "pages/<name>.md" as
+      # usual; a translation lives alongside it at "pages/<name>.<code>.md"
+      # and is reached as "?lang=<code>" on the page's normal URL, so ACLs
+      # (which key off the URL) cover every translation automatically.
+      # Empty (the default) turns the feature off. Set with FLUENCE_LANGUAGES.
+      @languages = ENV.fetch("FLUENCE_LANGUAGES", "").split(",").map(&.strip).reject(&.empty?)
+
+      # Label for the untranslated "pages/<name>.md" content in the
+      # language switcher; purely cosmetic, since that content is always
+      # what's served when no ?lang= (or an unconfigured one) is given.
+      # Set with FLUENCE_DEFAULT_LANG.
+      @default_lang = ENV.fetch("FLUENCE_DEFAULT_LANG", "en")
+      @languages = @languages.reject { |code| code == @default_lang }
+
       # Visible part of URL through which pages are accessed, e.g. /pages/my_page
       @pages_prefix = "/pages"
       # Start page - homepage. Defaults to /pages/home
@@ -99,6 +114,8 @@ module Fluence
     getter metadir : String
     getter publicdir : String
     getter themedir : String
+    getter languages : Array(String)
+    getter default_lang : String
     getter homepage : String
     getter pages_prefix : String
     getter media_prefix : String

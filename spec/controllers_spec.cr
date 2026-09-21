@@ -524,7 +524,11 @@ describe "page menu over HTTP" do
         Fluence::Page.new(name).update! SPEC_USER, "# #{name.split('/').last.capitalize}\n"
       end
 
-      body = SpecClient.new.get("/pages/docs/guide").body
+      # The page menu is part of the signed-in layout; guests get a
+      # stripped-down view without it.
+      client = SpecClient.login "editor", "sekrit123"
+
+      body = client.get("/pages/docs/guide").body
       body.should contain %(<a class="tree-link active" href="/pages/docs/guide">Guide</a>)
       body.should contain %(<div class="collapse show" id="tree-docs">)
       body.should contain %(<div class="collapse show" id="tree-docs-guide">)
@@ -534,7 +538,7 @@ describe "page menu over HTTP" do
       body.should contain %(href="/pages/docs" title="Up: Docs">)
       body.should contain %(href="/pages/docs/guide/install" title="Next: Install">)
 
-      body = SpecClient.new.get("/pages/alpha").body
+      body = client.get("/pages/alpha").body
       body.should contain %(<span class="btn btn-outline-secondary text-nowrap disabled">‹ Prev</span>)
       body.should contain %(href="/pages/docs" title="Next: Docs">)
 
@@ -654,7 +658,9 @@ describe "attachment list on a page" do
       Fluence::Media.new("parent/own.txt").update! SPEC_USER, "own"
       Fluence::Media.new("parent/child/pic.png").update! SPEC_USER, "png"
 
-      response = SpecClient.new.get "/pages/parent"
+      # The attachments list is part of the signed-in layout; guests get a
+      # stripped-down view without it.
+      response = SpecClient.login("editor", "sekrit123").get "/pages/parent"
       response.status_code.should eq 200
       response.body.should contain %(href="/media/parent/own.txt")
       response.body.should_not contain "/media/parent/child/pic.png"
@@ -721,7 +727,34 @@ describe "attachment list markup" do
 
       SpecClient.new.get("/pages/att-list").body.should_not contain %(name="delete")
       Fluence::Page.new("no-att").update! SPEC_USER, "# No Att\n"
-      SpecClient.new.get("/pages/no-att").body.should contain %(<div id="no-attachments" class="small text-body-secondary">None.</div>)
+      client.get("/pages/no-att").body.should contain %(<div id="no-attachments" class="small text-body-secondary">None.</div>)
+    end
+  end
+end
+
+describe "guest page view" do
+  it "shows only content and navigation, hiding the menu, attachments, and page management" do
+    with_each_storage do |_, _|
+      Fluence::Page.new("guest-view").update! SPEC_USER, "# Guest View\nBody text.\n"
+      Fluence::Media.new("guest-view/a.txt").update! SPEC_USER, "A"
+
+      body = SpecClient.new.get("/pages/guest-view").body
+      body.should contain "Body text."
+      body.should contain %(href="/pages/home">Home</a>)
+      body.should contain %(href="/sitemap")
+      body.should contain %(href="/users/login")
+      body.should contain %(href="/users/register")
+      body.should_not contain "pages-hierarchy"
+      body.should_not contain "page-nav"
+      body.should_not contain "manage-attachments"
+      body.should_not contain "manage-page"
+      body.should_not contain "page-permissions"
+
+      # Signed-in users still get the full view.
+      client = SpecClient.login "editor", "sekrit123"
+      full_body = client.get("/pages/guest-view").body
+      full_body.should contain "pages-hierarchy"
+      full_body.should contain "manage-attachments"
     end
   end
 end

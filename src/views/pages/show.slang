@@ -12,6 +12,8 @@
               button.btn.btn-sm.btn-outline-secondary.ms-2 type="button" onclick="Fluence.editor.discardDraft()" Discard draft
             form#edit-page.invisible method="post"
               fieldset
+                - if page.lang
+                  input type="hidden" name="lang" value="#{page.lang}"
                 textarea.form-control name="body" = body
           - else
             #page-body
@@ -43,6 +45,18 @@
                     input type="hidden" name="media-name" value="#{filename}"
                     button.btn.btn-sm.btn-outline-danger.py-0.ms-2 name="delete" value="Delete" type="submit" formaction="#{Fluence::OPTIONS.media_prefix}/#{page.name}/#{filename}" onclick="return Fluence.deleteAttachment(this, '#{filename}')" Delete
     #sidebar.col
+      - if !Fluence::OPTIONS.languages.empty?
+        section#page-languages
+          h6.section-title Language
+          ul.list-unstyled.mb-0
+            - default_class = page.lang.nil? ? "fw-bold" : ""
+            li
+              a class=default_class href="#{page.url}" = Fluence::OPTIONS.default_lang
+            - Fluence::OPTIONS.languages.each do |code|
+              - has_translation = page.translations.includes? code
+              - current_class = page.lang == code ? "fw-bold" : ""
+              li
+                a class=current_class href="#{page.url}?lang=#{code}" = has_translation ? code : "#{code} (untranslated)"
       - if writable
         section#page-content
           h6.section-title Page Content
@@ -83,6 +97,8 @@
               a.section-toggle.collapsed data-bs-toggle="collapse" href="#page-management-body" role="button" aria-expanded="false" aria-controls="page-management-body" Page Management
             #page-management-body.collapse
               form#manage-page method="post"
+                - if page.lang
+                  input type="hidden" name="lang" value="#{page.lang}"
                 .input-group.input-group-sm
                   span.input-group-text id="label-page-name" Page name
                   input.form-control type="text" id="input-page-name" name="input-page-name" aria-describedby="label-page-name" value="#{page.name}"

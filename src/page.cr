@@ -15,16 +15,27 @@ class Fluence::Page < Fluence::File
 	property toc : Page::TableOfContent::Toc
 	property intlinks : Page::InternalLinks::LinkList
 
-	def initialize(name : String)
+	# Language of this instance, from `Fluence::OPTIONS.languages`; nil for
+	# the default-language content at "pages/<name>.md".
+	getter lang : String?
+
+	def initialize(name : String, @lang : String? = nil)
 		name = Page.sanitize(name).strip "/"
 		title = ::File.basename name
-		super("pages/#{name}.md", name, "#{Fluence::OPTIONS.pages_prefix}/#{name}", title)
+		suffix = @lang ? ".#{@lang}" : ""
+		super("pages/#{name}#{suffix}.md", name, "#{Fluence::OPTIONS.pages_prefix}/#{name}", title)
 
 		@slug = Page.title_to_slug @title
 		@intlinks = Page::InternalLinks::LinkList.new
 		@toc = Page::TableOfContent::Toc.new
 
 		jail!
+	end
+
+	# Language codes (from `Fluence::OPTIONS.languages`) this page has a
+	# translation for.
+	def translations : Array(String)
+		Fluence::OPTIONS.languages.select { |code| Page.new(@name, code).exists? }
 	end
 
 	def storage_prefix : String
@@ -116,6 +127,11 @@ class Fluence::Page < Fluence::File
 		new_page = Page.new(new_name)
 		old_prefix = "media/#{@name}/"
 		moves = attachment_paths.map { |path| {path, "media/#{new_page.name}/#{path.lchop old_prefix}"} }
+		# Renaming the default-language page takes its translations along;
+		# renaming a translation directly (@lang set) affects only itself.
+		unless @lang
+			moves += translations.map { |code| {Page.new(@name, code).path, Page.new(new_page.name, code).path} }
+		end
 		rename_to new_page, user, overwrite, moves
 	end
 

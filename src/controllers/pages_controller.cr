@@ -10,7 +10,7 @@ class PagesController < ApplicationController
   def show
     # Permissions are checked against the page's canonical URL rather than
     # the path as typed: /pages/Secret and /pages/secr%65t are "secret".
-    page = Fluence::Page.new params.url["path"]
+    page = Fluence::Page.new params.url["path"], page_lang
     acl_permit! :read, page.url
     flash["danger"] = params.query["flash.danger"] if params.query["flash.danger"]?
     page.process! if page.exists?
@@ -95,7 +95,11 @@ class PagesController < ApplicationController
 
     tree = page_tree
 
-    render "show.slang"
+    if user_signed_in?
+      render "show.slang"
+    else
+      render "show_guest.slang"
+    end
   end
 
   # Whether the editor opens in edit mode (as opposed to preview) for
@@ -116,7 +120,7 @@ class PagesController < ApplicationController
 
   # post /pages/*path
   def update
-    page = Fluence::Page.new params.url["path"]
+    page = Fluence::Page.new params.url["path"], page_lang
     acl_permit! :write, page.url
     page.process! if page.exists?
     if params.body["rename"]?
@@ -181,6 +185,7 @@ class PagesController < ApplicationController
 
       pages.each do |page|
         begin
+          page.translations.each { |code| Fluence::Page.new(page.name, code).delete current_user }
           page.delete current_user if page.exists?
           flash["success success-#{page.name}"] = "Page '#{page.name}' has been deleted"
         rescue e
@@ -280,6 +285,13 @@ class PagesController < ApplicationController
     tree = page_tree
     title = "Pages titled '#{slug}' - #{title()}"
     render "titles.slang"
+  end
+
+  # The translation requested via ?lang= (query, or body for POSTs), or nil
+  # for the default language; unconfigured codes fall back to nil too.
+  private def page_lang : String?
+    lang = params.query["lang"]? || params.body["lang"]?
+    lang if lang && Fluence::OPTIONS.languages.includes?(lang)
   end
 
   private def subtree_of(page)
