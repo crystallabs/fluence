@@ -32,6 +32,14 @@ module Fluence
       # with FLUENCE_PUBLICDIR.
       @publicdir = ::File.expand_path ENV.fetch("FLUENCE_PUBLICDIR") { default_publicdir }
 
+      # Directory of theming overrides: header.html, footer.html, and
+      # nav_extra.html (raw HTML dropped into the layout as-is), and
+      # custom.css (appended after the built-in stylesheet). Any file
+      # that's missing is simply skipped, so a site can override as much
+      # or as little as it wants without touching the templates. Defaults
+      # to metadir/theme; override with FLUENCE_THEMEDIR.
+      @themedir = ::File.expand_path ENV.fetch("FLUENCE_THEMEDIR") { ::File.join(@metadir, "theme") }
+
       # Visible part of URL through which pages are accessed, e.g. /pages/my_page
       @pages_prefix = "/pages"
       # Start page - homepage. Defaults to /pages/home
@@ -78,6 +86,7 @@ module Fluence
 
       Dir.mkdir_p @datadir
       Dir.mkdir_p @metadir
+      Dir.mkdir_p @themedir
     end
 
     getter host : String
@@ -89,6 +98,7 @@ module Fluence
     getter datadir : String
     getter metadir : String
     getter publicdir : String
+    getter themedir : String
     getter homepage : String
     getter pages_prefix : String
     getter media_prefix : String

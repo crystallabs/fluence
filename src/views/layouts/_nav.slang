@@ -46,3 +46,6 @@ nav.navbar.navbar-expand-lg.bg-body-tertiary
             - if Fluence::OPTIONS.registration_open?
               li.navbar-text or
               a class=register_class href="#{Fluence::OPTIONS.users_prefix}/register" Register
+      - nav_extra = Fluence::Theme.slot "nav_extra"
+      - if !nav_extra.empty?
+        == nav_extra

@@ -21,8 +21,16 @@ html lang="en" data-bs-theme=theme_attr
     link rel="stylesheet" href="/assets/stylesheet/base.css"
     script src="/assets/javascript/base.js"
     script == "Fluence.settings = #{current_user.settings.to_json};"
+    - custom_css = Fluence::Theme.custom_css
+    - if !custom_css.empty?
+      style == custom_css
 
   body
+    - theme_header = Fluence::Theme.slot "header"
+    - if !theme_header.empty?
+      #theme-header
+        == theme_header
+
     #navbar
       == render_template "layouts/_nav.slang"
 
@@ -37,3 +45,8 @@ html lang="en" data-bs-theme=theme_attr
               .w-100
       #main-content
         == content
+
+    - theme_footer = Fluence::Theme.slot "footer"
+    - if !theme_footer.empty?
+      #theme-footer
+        == theme_footer
