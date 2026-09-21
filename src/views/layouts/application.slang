@@ -50,3 +50,7 @@ html lang="en" data-bs-theme=theme_attr
     - if !theme_footer.empty?
       #theme-footer
         == theme_footer
+
+    - custom_js = Fluence::Theme.custom_js
+    - if !custom_js.empty?
+      script == custom_js

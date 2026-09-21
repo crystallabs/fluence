@@ -33,8 +33,9 @@ module Fluence
       @publicdir = ::File.expand_path ENV.fetch("FLUENCE_PUBLICDIR") { default_publicdir }
 
       # Directory of theming overrides: header.html, footer.html, and
-      # nav_extra.html (raw HTML dropped into the layout as-is), and
-      # custom.css (appended after the built-in stylesheet). Any file
+      # nav_extra.html (raw HTML dropped into the layout as-is), custom.css
+      # (appended after the built-in stylesheet), and custom.js (appended
+      # after the built-in scripts, at the end of the body). Any file
       # that's missing is simply skipped, so a site can override as much
       # or as little as it wants without touching the templates. Defaults
       # to metadir/theme; override with FLUENCE_THEMEDIR.
