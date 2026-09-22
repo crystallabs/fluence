@@ -28,16 +28,54 @@ describe Fluence::Markdown do
     Fluence::Markdown.to_html("```\n# not a heading\n```\n").should_not contain "<h1"
   end
 
-  it "omits raw HTML and script-capable link targets" do
+  it "escapes disallowed raw HTML and drops script-capable link targets" do
     html = Fluence::Markdown.to_html("<img src=x onerror=alert(1)>\n\ntext <b onclick=alert(2)>bold</b>\n")
-    html.should_not contain "onerror"
-    html.should_not contain "onclick"
+    html.should_not contain "<img"
+    html.should_not contain "<b "
+    html.should contain "&lt;img src=x onerror=alert(1)&gt;"
     html.should contain "text"
 
     html = Fluence::Markdown.to_html("[x](javascript:alert(1)) ![i](data:text/html,x) ![ok](data:image/png;base64,AA==)\n")
     html.should_not contain "javascript:"
     html.should_not contain "data:text/html"
     html.should contain %(src="data:image/png;base64,AA==")
+  end
+
+  it "lets <i>/<span class=\"...\"> through for icons and custom styling" do
+    html = Fluence::Markdown.to_html(%(An icon <i class="fas fa-running l4"></i> and <span class="highlight">text</span>.))
+    html.should contain %(<i class="fas fa-running l4"></i>)
+    html.should contain %(<span class="highlight">text</span>)
+  end
+
+  it "lets headings, lists, and layout containers through as raw HTML" do
+    html = Fluence::Markdown.to_html(<<-HTML
+      <div class="callout">
+      <article>
+      <h3 class="title">Heading</h3>
+      <ul><li>one</li><li>two</li></ul>
+      <ol><li>first</li></ol>
+      </article>
+      </div>
+      HTML
+    )
+    html.should contain %(<div class="callout">)
+    html.should contain "<article>"
+    html.should contain %(<h3 class="title">Heading</h3>)
+    html.should contain "<ul><li>one</li><li>two</li></ul>"
+    html.should contain "<ol><li>first</li></ol>"
+    html.should contain "</div>"
+  end
+
+  it "still escapes an unsafe tag disguised with a class attribute" do
+    html = Fluence::Markdown.to_html(%(<img class="x" src=y onerror=alert(1)>))
+    html.should_not contain "<img"
+    html.should contain "&lt;img"
+  end
+
+  it "escapes an opening tag carrying an extra attribute besides class" do
+    html = Fluence::Markdown.to_html(%(<span class="x" onclick="alert(1)">text</span>))
+    html.should_not contain %(<span class="x" onclick)
+    html.should contain %(&lt;span class="x" onclick="alert(1)"&gt;)
   end
 end
 

@@ -32,14 +32,20 @@ module Fluence
       # with FLUENCE_PUBLICDIR.
       @publicdir = ::File.expand_path ENV.fetch("FLUENCE_PUBLICDIR") { default_publicdir }
 
-      # Directory of theming overrides: header.html, footer.html, and
-      # nav_extra.html (raw HTML dropped into the layout as-is), custom.css
-      # (appended after the built-in stylesheet), and custom.js (appended
-      # after the built-in scripts, at the end of the body). Any file
-      # that's missing is simply skipped, so a site can override as much
-      # or as little as it wants without touching the templates. Defaults
-      # to metadir/theme; override with FLUENCE_THEMEDIR.
-      @themedir = ::File.expand_path ENV.fetch("FLUENCE_THEMEDIR") { ::File.join(@metadir, "theme") }
+      # Active theme's name; its override files are read from
+      # metadir/themes/<name>/ (see @themedir below). Defaults to
+      # "default"; set with FLUENCE_THEME. The "example" theme ships in
+      # metadir/themes/example/ as a documented starting point.
+      @theme = ENV.fetch("FLUENCE_THEME", "default")
+
+      # Directory of theming overrides for the active theme: header.html,
+      # footer.html, and nav_extra.html (raw HTML dropped into the layout
+      # as-is), custom.css (appended after the built-in stylesheet), and
+      # custom.js (appended after the built-in scripts, at the end of the
+      # body). Any file that's missing is simply skipped, so a theme can
+      # override as much or as little as it wants without touching the
+      # templates.
+      @themedir = ::File.join(@metadir, "themes", @theme)
 
       # Extra language codes pages can be translated into, e.g. "de,fr".
       # A page's default-language content lives at "pages/<name>.md" as
@@ -114,6 +120,7 @@ module Fluence
     getter datadir : String
     getter metadir : String
     getter publicdir : String
+    getter theme : String
     getter themedir : String
     getter languages : Array(String)
     getter default_lang : String
