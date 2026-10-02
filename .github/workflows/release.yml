@@ -1,8 +1,8 @@
 name: Release
 
 on:
-  release:
-    types: [published]
+  push:
+    tags: [ 'v*' ]
   workflow_dispatch:
     inputs:
       tag:
@@ -14,21 +14,42 @@ permissions:
   contents: write
 
 env:
-  CRYSTAL_IMAGE: crystallang/crystal:1.21.0-alpine
-  TAG: ${{ github.event.release.tag_name || inputs.tag }}
+  CRYSTAL_VERSION: 1.21.0
+  TAG: ${{ inputs.tag || (github.ref_type == 'tag' && github.ref_name) || '' }}
+  GH_TOKEN: ${{ github.token }}
 
 jobs:
+  # Created up front so that the build jobs only ever upload to it.
+  release:
+    name: Create release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create the release unless it exists
+        if: env.TAG != ''
+        run: |
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "$TAG" --verify-tag --generate-notes
+
   build:
-    name: Build linux-${{ matrix.arch }}
+    name: Build ${{ matrix.os }}-${{ matrix.arch }}
+    needs: release
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - arch: x86_64
+          - os: linux
+            arch: x86_64
             runner: ubuntu-latest
-          - arch: aarch64
+          - os: linux
+            arch: aarch64
             runner: ubuntu-24.04-arm
+          - os: macos
+            arch: x86_64
+            runner: macos-15-intel
+          - os: macos
+            arch: aarch64
+            runner: macos-15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,25 +59,57 @@ jobs:
       # The build runs in the Crystal Alpine image via docker so that the
       # binary is fully static, independent of the runner's architecture
       # (Alpine containers cannot host GitHub's JavaScript actions on arm64).
-      - name: Build static binary
+      - name: Build static binary (Linux)
+        if: matrix.os == 'linux'
         run: |
-          docker run --rm -v "$PWD:/app" -w /app "$CRYSTAL_IMAGE" sh -ec '
+          docker run --rm -v "$PWD:/app" -w /app "crystallang/crystal:$CRYSTAL_VERSION-alpine" sh -ec '
             shards install --production
             mkdir -p bin
             crystal build --release --static -o bin/fluence src/fluence.cr
           '
           sudo chown -R "$(id -u):$(id -g)" bin lib
 
+      - name: Install Crystal (macOS)
+        if: matrix.os == 'macos'
+        uses: crystal-lang/install-crystal@v1
+        with:
+          crystal: ${{ env.CRYSTAL_VERSION }}
+
+      # macOS has no fully static binaries. The Homebrew libraries are linked
+      # statically, by putting a directory holding only their .a files first
+      # in the linker's search path, so that the binary depends on nothing
+      # but the libraries that ship with the system.
+      - name: Build binary (macOS)
+        if: matrix.os == 'macos'
+        run: |
+          brew install pkgconf openssl@3 libyaml pcre2 bdw-gc
+          mkdir static
+          for lib in openssl@3/libssl openssl@3/libcrypto libyaml/libyaml pcre2/libpcre2-8 bdw-gc/libgc; do
+            prefix="$(brew --prefix "${lib%/*}")"
+            ln -s "$prefix/lib/${lib#*/}.a" static/
+            # Crystal asks pkg-config for the library versions (OpenSSL's
+            # decides which of its functions get bound).
+            export PKG_CONFIG_PATH="$prefix/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+          done
+          pkg-config --modversion libssl
+          shards install --production
+          mkdir -p bin
+          crystal build --release --link-flags "-L$PWD/static" -o bin/fluence src/fluence.cr
+          otool -L bin/fluence
+          if otool -L bin/fluence | tail -n +2 | grep -vE '^[[:space:]]+(/usr/lib/|/System/)'; then
+            echo "bin/fluence links against non-system libraries"; exit 1
+          fi
+
       - name: Package
         id: package
         run: |
           version="${TAG:-v$(sed -n 's/^version: *//p' shard.yml)}"
-          name="fluence-${version}-linux-${{ matrix.arch }}"
+          name="fluence-${version}-${{ matrix.os }}-${{ matrix.arch }}"
           mkdir "$name"
           cp bin/fluence README.md LICENSE "$name/"
           cp -r public "$name/public"
           tar czf "$name.tar.gz" "$name"
-          sha256sum "$name.tar.gz" > "$name.tar.gz.sha256"
+          shasum -a 256 "$name.tar.gz" > "$name.tar.gz.sha256"
           echo "name=$name" >> "$GITHUB_OUTPUT"
 
       - name: Upload workflow artifact
@@ -70,9 +123,6 @@ jobs:
 
       - name: Attach to release
         if: env.TAG != ''
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ env.TAG }}
-          files: |
-            ${{ steps.package.outputs.name }}.tar.gz
-            ${{ steps.package.outputs.name }}.tar.gz.sha256
+        run: |
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber \
+            "${{ steps.package.outputs.name }}.tar.gz" "${{ steps.package.outputs.name }}.tar.gz.sha256"

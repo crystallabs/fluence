@@ -36,7 +36,7 @@ docker compose up --build
 
 The result of the compilation will be one executable file &mdash; bin/fluence.
 
-Prebuilt static Linux binaries (x86_64 and aarch64) are attached to every [release](https://github.com/crystallabs/fluence/releases) as `fluence-<version>-linux-<arch>.tar.gz`, together with the `public/` assets directory. Unpack the archive and run `./fluence` from the unpacked directory; `git` must be installed on the host.
+Prebuilt binaries for Linux (static) and macOS, both x86_64 and aarch64, are attached to every [release](https://github.com/crystallabs/fluence/releases) as `fluence-<version>-<linux|macos>-<arch>.tar.gz`, together with the `public/` assets directory. Unpack the archive and run `./fluence` from the unpacked directory; `git` must be installed on the host. The macOS binaries are not signed; if macOS refuses to run a downloaded one, clear the quarantine flag with `xattr -d com.apple.quarantine fluence`.
 
 Run this file and visit [http://localhost:3000/](http://localhost:3000/) in your browser.
 
