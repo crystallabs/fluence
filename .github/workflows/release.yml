@@ -3,6 +3,8 @@ name: Release
 on:
   push:
     tags: [ 'v*' ]
+  release:
+    types: [ published ]
   workflow_dispatch:
     inputs:
       tag:
@@ -16,23 +18,14 @@ permissions:
 env:
   CRYSTAL_VERSION: 1.21.0
   TAG: ${{ inputs.tag || (github.ref_type == 'tag' && github.ref_name) || '' }}
+  # Attach to the release only when there is one: a published release, or a
+  # hand run naming a tag. A tag push only builds, creating no release.
+  ATTACH: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.tag != '') }}
   GH_TOKEN: ${{ github.token }}
 
 jobs:
-  # Created up front so that the build jobs only ever upload to it.
-  release:
-    name: Create release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Create the release unless it exists
-        if: env.TAG != ''
-        run: |
-          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||
-            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "$TAG" --verify-tag --generate-notes
-
   build:
     name: Build ${{ matrix.os }}-${{ matrix.arch }}
-    needs: release
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -122,7 +115,7 @@ jobs:
           if-no-files-found: error
 
       - name: Attach to release
-        if: env.TAG != ''
+        if: env.ATTACH == 'true'
         run: |
           gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber \
             "${{ steps.package.outputs.name }}.tar.gz" "${{ steps.package.outputs.name }}.tar.gz.sha256"
