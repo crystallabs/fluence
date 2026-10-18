@@ -63,10 +63,6 @@ class Fluence::Media < Fluence::File
 		Fluence::MEDIA.children1 self
 	end
 
-	def children
-		Fluence::MEDIA.children self
-	end
-
 	# Does any media entry exist below this one?
 	def directory?
 		prefix = @name + "/"

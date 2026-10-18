@@ -769,3 +769,20 @@ describe "table of contents" do
     end
   end
 end
+
+describe "sitemap" do
+  it "lists media as a tree of links" do
+    with_each_storage do |_, _|
+      Fluence::Media.new("docs/guide/shot.png").update! SPEC_USER, "PNG"
+      Fluence::Media.new("docs/top.txt").update! SPEC_USER, "T"
+      Fluence::Media.new("root.txt").update! SPEC_USER, "R"
+
+      body = SpecClient.new.get("/sitemap").body
+      body.should contain %(<a href="/media/docs/guide/shot.png">shot.png</a>)
+      body.should contain %(<a href="/media/docs/top.txt">top.txt</a>)
+      body.should contain %(<a href="/media/root.txt">root.txt</a>)
+      body.should_not contain %(href="/media/docs")
+      body.index!("<span class=\"text-body-secondary\">docs</span>").should be < body.index!("shot.png")
+    end
+  end
+end

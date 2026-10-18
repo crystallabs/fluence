@@ -222,7 +222,7 @@ class PagesController < ApplicationController
   def sitemap
     acl_permit! :read
     tree = page_tree
-    media = Fluence::MEDIA.children1
+    media = media_tree
     title = "Sitemap - #{title()}"
     render "sitemap.slang"
   end

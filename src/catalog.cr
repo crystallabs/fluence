@@ -71,28 +71,6 @@ module Fluence
       ret
     end
 
-    # Returns all entries below *page* as `{name => {basename, entry}}`.
-    def children(page : T)
-      ret = {} of String => {String, T}
-      titles_map = titles
-      names.each do |n|
-        if md = n.match /^#{Regex.escape(page.name)}\/.*?([^\/]+)$/
-          ret[n] = {md[1].to_s, entry_with_title(n, titles_map)}
-        end
-      end
-      ret
-    end
-
-    # Returns all entries as `{name => {name, entry}}`.
-    def children
-      ret = {} of String => {String, T}
-      titles_map = titles
-      names.each do |n|
-        ret[n] = {n, entry_with_title(n, titles_map)}
-      end
-      ret
-    end
-
     # Resolves an internal link *text* to `{title, url}`: prefers an entry
     # whose title slugifies to the same value, breaking ties by URL closeness
     # to *context*; otherwise links to the not-yet-existing top-level entry.

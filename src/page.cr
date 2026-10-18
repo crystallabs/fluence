@@ -75,10 +75,6 @@ class Fluence::Page < Fluence::File
 		Fluence::PAGES.children1 self
 	end
 
-	def children
-		Fluence::PAGES.children self
-	end
-
 	# Does any page exist below this one?
 	def directory?
 		prefix = @name + "/"

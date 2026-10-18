@@ -25,7 +25,6 @@ Lint/Formatting:
   - src/fluence.cr
   - src/media.cr
   - src/page.cr
-  - src/page/media.cr
   - src/users/users.cr
   - src/version.cr
 
@@ -87,15 +86,10 @@ Performance/ChainedCallWithNoBang:
   Excluded:
   - spec/catalog_spec.cr
 
-Style/MultilineCurlyBlock:
-  Excluded:
-  - src/wikimd/markdown.cr
-
 Style/ParenthesesAroundCondition:
   Excluded:
   - src/controllers/helpers/user.cr
   - src/users/users.cr
-  - src/wikimd/markdown.cr
 
 Style/PercentLiteralDelimiters:
   Excluded:
