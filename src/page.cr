@@ -108,7 +108,7 @@ class Fluence::Page < Fluence::File
 	# Renames the page without modifying the current Page object. The
 	# page's attachments move with it, in the same commit.
 	# Returns the new Page object.
-	def rename(user : Fluence::User, new_name, overwrite = false, subtree = false, intlinks = false)
+	def rename(user : Fluence::User, new_name, overwrite = false)
 		new_page = Page.new(new_name)
 		old_prefix = "media/#{@name}/"
 		moves = attachment_paths.map { |path| {path, "media/#{new_page.name}/#{path.lchop old_prefix}"} }
@@ -119,7 +119,7 @@ class Fluence::Page < Fluence::File
 	# self. Links to the moved attachments are rewritten in the page itself;
 	# with *intlinks*, links pointing at the old page name (and at its
 	# attachments) are rewritten in all other pages too.
-	def rename!(user : Fluence::User, new_name, overwrite = false, subtree = false, intlinks : Bool? = nil)
+	def rename!(user : Fluence::User, new_name, overwrite = false, intlinks = false)
 		old_name = @name
 		# Attachments of subpages do not move, so links to them stay as well.
 		keep = subpage_names.map { |name| media_url_for name }

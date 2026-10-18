@@ -160,7 +160,7 @@ class PagesController < ApplicationController
             end
           end
 
-          page.rename! current_user, new_name, !!params.body["input-page-overwrite"]?, subtree: false, intlinks: !!params.body["input-page-intlinks"]?
+          page.rename! current_user, new_name, !!params.body["input-page-overwrite"]?, intlinks: !!params.body["input-page-intlinks"]?
           flash["success success-#{old_name}"] = "Page '#{old_name}' has been renamed to '#{page.name}'"
         rescue e : Fluence::Page::AlreadyExists | Fluence::Error409
           flash["danger danger-#{page.name}"] = e.to_s
