@@ -54,6 +54,18 @@ describe "ACL enforcement over HTTP" do
 end
 
 describe "rename destination check over HTTP" do
+  it "reports an invalid destination name instead of failing" do
+    with_each_storage do |_, _|
+      client = SpecClient.login "editor", "sekrit123"
+      client.post "/pages/movable", {"body" => "# Movable\n"}
+
+      response = client.post "/pages/movable", {"rename" => "rename", "input-page-name" => "a//b"}
+      response.status_code.should eq 302
+      response.headers["Location"].should eq "/pages/movable"
+      Fluence::Page.new("movable").exists?.should be_true
+    end
+  end
+
   it "refuses renaming onto a write-protected destination" do
     with_each_storage do |_, _|
       client = SpecClient.login "editor", "sekrit123"
