@@ -184,7 +184,7 @@ abstract class Fluence::File
   end
 
   def self.title_to_slug(title : String) : String
-    title.gsub(/[^[:alnum:]^\/]+/, "-").downcase
+    title.gsub(/[^[:alnum:]\/]+/, "-").downcase
   end
 
   # Whether *name* is what `sanitize` makes of it, i.e. whether an entry

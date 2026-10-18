@@ -91,6 +91,6 @@ class Fluence::Media < Fluence::File
 	end
 
 	def self.title_to_slug(title : String) : String
-		title.gsub(/[^[:alnum:]^\/\.]+/, "-")
+		title.gsub(/[^[:alnum:]\/.]+/, "-")
 	end
 end
