@@ -776,7 +776,10 @@ describe "table of contents" do
       Fluence::Page.new("toc-esc").update! SPEC_USER, "# Toc Esc\n## A <b>bold</b> & \"quoted\" one\n"
 
       body = SpecClient.new.get("/pages/toc-esc").body
-      body.should contain %(<a href="#a-b-bold-b-quoted-one">A &lt;b&gt;bold&lt;/b&gt; &amp; &quot;quoted&quot; one</a>)
+      entry = body.match!(/<li><a href="#([^"]*)">(A .*?)<\/a>/)
+      entry[1].should eq "a-b-bold-/b-quoted-one"
+      entry[2].should eq "A &lt;b&gt;bold&lt;/b&gt; &amp; &quot;quoted&quot; one"
+      body.should contain %(<h2 id="#{entry[1]}">)
       body.should_not contain "<b>bold</b>"
     end
   end
