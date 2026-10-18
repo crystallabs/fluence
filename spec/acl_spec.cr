@@ -72,4 +72,18 @@ describe Acl do
     acls.groups_having_direct_access_to("/*", Acl::Perm::Read).should eq(["guest", "admin"])
     acls.groups_having_direct_access_to("/*", Acl::Perm::Write).should eq(["admin"])
   end
+
+  it "loads an empty file as no groups and refuses a malformed one" do
+    file = File.tempname("fluence-spec-acl")
+    acls = Acl::Groups.new file
+    acls.load!.groups.should be_empty
+
+    acls.add "guest"
+    acls["guest"]["/*"] = Acl::Perm::Read
+    acls.save!
+    Acl::Groups.new(file).load!["guest"]["/*"].should eq Acl::Perm::Read
+
+    File.write file, "groups: [not a hash\n"
+    expect_raises(YAML::ParseException) { Acl::Groups.new(file).load! }
+  end
 end

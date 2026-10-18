@@ -23,14 +23,17 @@ class Fluence::Users < Lockable
     ::File.touch(@file)
   end
 
-  # read the users from the file (erase the modifications !)
+  # Reads the users from the file, discarding in-memory modifications.
+  # A missing or empty file holds no users; a malformed one raises rather
+  # than silently yielding an empty list that the next save would persist.
   def load!
-    if ::File.exists?(@file) && (new_users = Users.from_yaml(::File.read(@file)) rescue nil)
+    content = ::File.exists?(@file) ? ::File.read(@file) : ""
+    if content.blank?
+      @list = {} of String => User
+    else
+      new_users = Users.from_yaml content
       @list = new_users.list
       @default = new_users.default
-      # @file = new_users.file
-    else
-      @list = {} of String => User
     end
     self
   end

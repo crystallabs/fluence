@@ -19,4 +19,17 @@ describe Fluence::Users do
     users["alicia"]?.should be_nil
     expect_raises(Fluence::Users::NotExists) { users.delete "alicia" }
   end
+
+  it "loads an empty file as no users and refuses a malformed one" do
+    file = File.tempname("fluence-spec-users")
+    users = Fluence::Users.new file
+    users.load!.list.should be_empty
+
+    users.add Fluence::User.new("alice", "pw")
+    users.save!
+    Fluence::Users.new(file).load!["alice"]?.should_not be_nil
+
+    File.write file, "list: [not a hash\n"
+    expect_raises(YAML::ParseException) { Fluence::Users.new(file).load! }
+  end
 end
