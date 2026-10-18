@@ -32,4 +32,19 @@ describe Fluence::Users do
     File.write file, "list: [not a hash\n"
     expect_raises(YAML::ParseException) { Fluence::Users.new(file).load! }
   end
+
+  it "does not save a transaction whose block raised" do
+    file = File.tempname("fluence-spec-users")
+    users = Fluence::Users.new file
+    users.transaction! &.add(Fluence::User.new("alice", "pw"))
+    expect_raises(Exception, "boom") do
+      users.transaction! do |list|
+        list.add Fluence::User.new("bob", "pw")
+        raise "boom"
+      end
+    end
+    reloaded = Fluence::Users.new(file).load!
+    reloaded["alice"]?.should_not be_nil
+    reloaded["bob"]?.should be_nil
+  end
 end

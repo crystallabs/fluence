@@ -23,7 +23,6 @@ Lint/Formatting:
   - src/controllers/helpers/page.cr
   - src/controllers/pages_controller.cr
   - src/fluence.cr
-  - src/lockable.cr
   - src/media.cr
   - src/page.cr
   - src/page/media.cr
@@ -32,7 +31,6 @@ Lint/Formatting:
 
 Lint/MissingBlockArgument:
   Excluded:
-  - src/lockable.cr
   - src/users/users.cr
 
 Lint/NotNil:
@@ -51,10 +49,6 @@ Lint/UnusedArgument:
   - spec/page_spec.cr
   - spec/storage_spec.cr
   - src/controllers/helpers/page.cr
-
-Lint/UnusedExpression:
-  Excluded:
-  - src/lockable.cr
 
 Lint/UselessAssign:
   Excluded:
@@ -114,7 +108,6 @@ Style/PercentLiteralDelimiters:
 Style/RedundantBegin:
   Excluded:
   - src/controllers/pages_controller.cr
-  - src/lockable.cr
 
 Style/RedundantNilInControlExpression:
   Excluded:
@@ -132,7 +125,6 @@ Style/RedundantSelf:
   - src/acl/groups.cr
   - src/acl/path.cr
   - src/file.cr
-  - src/lockable.cr
   - src/users/users.cr
 
 Style/VerboseBlock:

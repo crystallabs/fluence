@@ -10,21 +10,19 @@ abstract class Lockable
   @[YAML::Field(ignore: true)]
   @lock : Mutex = Mutex.new
 
-  # Execute some operation on the object, and then save it.
-  # The content can be loaded before executing the operations optionally.
+  # Executes some operation on the object under the lock, then saves it.
+  # The content can optionally be (re)loaded first. Nothing is saved when
+  # the block raises, so a failed operation leaves the file as it was.
   #
   # ```
-  # someLockableObject.transaction(read: true) { |obj| obj.update_operation(...) }
+  # someLockableObject.transaction!(read: true) { |obj| obj.update_operation(...) }
   # ```
-  def transaction!(read = false)
+  def transaction!(read = false, &)
     @lock.synchronize do
-      begin
-        self.load! if read == true
-        yield self
-      ensure
-        self.save!
-        self
-      end
+      load! if read
+      yield self
+      save!
     end
+    self
   end
 end
