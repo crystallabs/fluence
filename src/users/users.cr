@@ -67,8 +67,8 @@ class Fluence::Users < Lockable
 
     # if the name change
     if name != u.name
-      add u # if it fails, remove will fail too
-      remove name
+      add u # if it fails, nothing is deleted
+      delete name
     else
       @list[u.name] = u
     end
