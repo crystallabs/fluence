@@ -189,4 +189,11 @@ describe Fluence::Storage do
       storage.headings("pages").should eq({"pages/straße-日本.md" => "Unicode Title"})
     end
   end
+
+  it "raises Error404 when renaming or deleting a missing path" do
+    with_each_storage do |storage, kind|
+      expect_raises(Fluence::Error404) { storage.rename "pages/nope.md", "pages/x.md", SPEC_USER, "m" }
+      expect_raises(Fluence::Error404) { storage.delete "pages/nope.md", SPEC_USER, "m" }
+    end
+  end
 end

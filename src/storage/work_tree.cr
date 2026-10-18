@@ -15,7 +15,7 @@ module Fluence
     def self.init(root : String) : WorkTree
       ::Dir.mkdir_p root
       storage = new root
-      storage.git ["init", "."]
+      storage.git! ["init", "."]
       storage
     end
 
@@ -72,6 +72,7 @@ module Fluence
 
     def rename(moves : Array({String, String}), user : Fluence::User, message : String)
       @lock.synchronize do
+        moves.each { |old_path, _| raise Error404.new "No such file: #{old_path}" unless exists? old_path }
         moves.each do |old_path, new_path|
           ::Dir.mkdir_p ::File.dirname(abs(new_path))
           ::File.rename abs(old_path), abs(new_path)
@@ -129,9 +130,14 @@ module Fluence
       {status, output.to_s}
     end
 
+    protected def git!(args : Array(String), user : Fluence::User? = nil) : String
+      status, output = git args, user: user
+      raise Error.new "git #{args.first?} failed: #{output}" unless status.success?
+      output
+    end
+
     private def commit(paths : Array(String), user : Fluence::User, message : String)
-      status, output = git ["add", "--"] + paths
-      raise Error.new "git add failed: #{output}" unless status.success?
+      git! ["add", "--"] + paths
       # A no-op edit produces nothing to commit; that is not an error.
       status, output = git ["commit", "--no-gpg-sign", "-m", message, "--"] + paths, user: user
       unless status.success? || output.includes?("nothing to commit") || output.includes?("nothing added")
