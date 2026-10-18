@@ -757,3 +757,15 @@ describe "sidebar of a page that does not exist" do
     end
   end
 end
+
+describe "table of contents" do
+  it "escapes heading text" do
+    with_each_storage do |_, _|
+      Fluence::Page.new("toc-esc").update! SPEC_USER, "# Toc Esc\n## A <b>bold</b> & \"quoted\" one\n"
+
+      body = SpecClient.new.get("/pages/toc-esc").body
+      body.should contain %(<a href="#a-b-bold-b-quoted-one">A &lt;b&gt;bold&lt;/b&gt; &amp; &quot;quoted&quot; one</a>)
+      body.should_not contain "<b>bold</b>"
+    end
+  end
+end

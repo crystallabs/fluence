@@ -86,9 +86,11 @@ module Fluence::Helpers::Page
     end
   end
 
-  # TODO: move that
+  # One TOC entry linking to the heading's anchor (see
+  # `Fluence::Markdown::Renderer#heading`). Heading text comes from page
+  # content, so it is escaped.
   def create_toc_line(line, current_id, ends = true)
-    "<li><a href=\"##{Fluence::Page.sanitize line}\">#{line}</a>#{ends ? "</li>" : nil}\n"
+    "<li><a href=\"##{Fluence::Page.sanitize line}\">#{HTML.escape line}</a>#{ends ? "</li>" : nil}\n"
   end
 
   # TODO: move that
