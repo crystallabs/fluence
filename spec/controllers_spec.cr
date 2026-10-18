@@ -798,3 +798,33 @@ describe "sitemap" do
     end
   end
 end
+
+describe "admin forms" do
+  it "report a failure as a flash message instead of an error page" do
+    with_each_storage do |_, _|
+      backup = File.read(Fluence::USERS.file)
+      begin
+        Fluence::USERS.transaction!(&.list.clear)
+        admin = SpecClient.new
+        admin.post "/users/register", {"username" => "founder", "password" => "sekrit123"}
+        admin.post "/users/login", {"username" => "founder", "password" => "sekrit123"}
+
+        response = admin.post "/admin/users/delete", {"username" => "nobody"}
+        response.status_code.should eq 302
+        response.headers["Location"].should eq "/admin/users"
+        admin.get("/admin/users").body.should contain "Unable to process that: User nobody is not in the list."
+
+        response = admin.post "/admin/acls/delete", {"group" => "no-such-group", "path" => "/x"}
+        response.status_code.should eq 302
+        admin.get("/admin/acls").body.should contain "Unable to process that"
+
+        response = admin.post "/admin/acls/create", {"group" => "g", "path" => "/x", "perm" => "bogus"}
+        response.status_code.should eq 302
+        Fluence::ACL["g"]?.should be_nil
+      ensure
+        File.write(Fluence::USERS.file, backup)
+        Fluence::USERS.load!
+      end
+    end
+  end
+end
