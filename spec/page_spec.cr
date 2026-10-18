@@ -15,6 +15,16 @@ describe Fluence::Page do
     Fluence::Page.canonical_name?("a^b").should be_false
   end
 
+  it "tells code lines from prose" do
+    content = "# T\n```\n# c\n```\n    # i\n## U\r\n"
+    lines = [] of {String, Bool}
+    Fluence::Page::Lines.each(content) { |line, code| lines << {line, code} }
+    lines.should eq [{"# T\n", false}, {"```\n", true}, {"# c\n", true}, {"```\n", true}, {"    # i\n", true}, {"## U\r\n", false}]
+    lines.join(&.[0]).should eq content
+
+    Fluence::Page::TableOfContent.toc(content).should eq [{1, "T"}, {2, "U"}]
+  end
+
   it "derives title, toc, and intlinks from content" do
     with_each_storage do |storage, kind|
       page = Fluence::Page.new("guide")
