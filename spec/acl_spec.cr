@@ -48,6 +48,12 @@ describe Acl do
     Acl::Path.new("/a/test*").acl_match?("/a/test/").should eq(true)
     Acl::Path.new("/a/test*").acl_match?("/b/test").should eq(false)
     Acl::Path.new("/a/test*").acl_match?("/a/other").should eq(false)
+    # Only "*" is special; regex metacharacters are literal.
+    Acl::Path.new("/pages/a.b").acl_match?("/pages/a.b").should eq(true)
+    Acl::Path.new("/pages/a.b").acl_match?("/pages/aXb").should eq(false)
+    Acl::Path.new("/pages/(x)+").acl_match?("/pages/(x)+").should eq(true)
+    Acl::Path.new("/pages/(x)+").acl_match?("/pages/x").should eq(false)
+    Acl::Path.new("/pages/*").acl_match?("/pages/a\nb").should eq(false)
   end
 
   it "groups having" do

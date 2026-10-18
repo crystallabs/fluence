@@ -8,9 +8,12 @@ class Acl::Path
   @[YAML::Field(ignore: true)]
   getter regex : Regex?
 
+  # The pattern language is just "*" matching anything; every other
+  # character, including regex metacharacters such as "." or "(", is
+  # taken literally.
   def self.value_to_regex(value : String)
-    value_regex = value.gsub "*", ".*"
-    Regex.new "^#{value_regex}$"
+    value_regex = Regex.escape(value).gsub "\\*", ".*"
+    Regex.new "\\A#{value_regex}\\z"
   end
 
   def initialize(@value : String)
