@@ -47,6 +47,20 @@ module Fluence
       # templates.
       @themedir = ::File.join(@metadir, "themes", @theme)
 
+      # Text that replaces a link to a page or attachment the reader can't
+      # read, wherever page content links to one (e.g. a page under an
+      # ACL-hidden directory linked from a readable page): the link and
+      # its text are both dropped, so the target's location or title isn't
+      # disclosed either. Set with FLUENCE_INACCESSIBLE_LABEL.
+      @inaccessible_label = ENV.fetch("FLUENCE_INACCESSIBLE_LABEL", "Censored")
+
+      # Text that replaces an `![alt](src)` image embedded directly in
+      # page content (not wrapped in a link) whose attachment the reader
+      # can't read; unlike a hidden link, there's no separate link text to
+      # drop, just the `src` that would otherwise disclose the attachment's
+      # path. Set with FLUENCE_IMAGE_INACCESSIBLE_LABEL.
+      @image_inaccessible_label = ENV.fetch("FLUENCE_IMAGE_INACCESSIBLE_LABEL", "[Image Not Available]")
+
       # Extra language codes pages can be translated into, e.g. "de,fr".
       # A page's default-language content lives at "pages/<name>.md" as
       # usual; a translation lives alongside it at "pages/<name>.<code>.md"
@@ -122,6 +136,8 @@ module Fluence
     getter publicdir : String
     getter theme : String
     getter themedir : String
+    getter inaccessible_label : String
+    getter image_inaccessible_label : String
     getter languages : Array(String)
     getter default_lang : String
     getter homepage : String

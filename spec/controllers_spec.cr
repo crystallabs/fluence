@@ -545,6 +545,27 @@ describe "page menu over HTTP" do
       SpecClient.new.get("/sitemap").body.should contain %(<div class="collapse show" id="tree-other">)
     end
   end
+
+  it "omits unreadable pages, and directories left with nothing readable inside, from the tree" do
+    with_each_storage do |_, _|
+      Fluence::Page.new("hidden/secret").update! SPEC_USER, "# Secret\n"
+      Fluence::Page.new("visible").update! SPEC_USER, "# Visible\n"
+
+      Fluence::ACL["guest"]["#{Fluence::OPTIONS.pages_prefix}/hidden/*"] = Acl::Perm::None
+      begin
+        body = SpecClient.new.get("/sitemap").body
+        body.should_not contain "hidden"
+        body.should_not contain "secret"
+        body.should contain %(href="/pages/visible")
+
+        # A logged-in user without the restriction still sees it.
+        client = SpecClient.login "editor", "sekrit123"
+        client.get("/sitemap").body.should contain %(href="/pages/hidden/secret")
+      ensure
+        Fluence::ACL["guest"].delete "#{Fluence::OPTIONS.pages_prefix}/hidden/*"
+      end
+    end
+  end
 end
 
 describe "save and continue over HTTP" do

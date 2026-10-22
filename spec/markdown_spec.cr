@@ -77,6 +77,67 @@ describe Fluence::Markdown do
     html.should_not contain %(<span class="x" onclick)
     html.should contain %(&lt;span class="x" onclick="alert(1)"&gt;)
   end
+
+  it "leaves links alone when no user is given to check them against" do
+    Fluence::Markdown.to_html("[Secret](/pages/hidden/secret)")
+      .should contain %(<a href="/pages/hidden/secret">Secret</a>)
+  end
+
+  it "replaces a link to an unreadable page or attachment with the inaccessible label, dropping its text" do
+    with_each_storage do |_, _|
+      Fluence::ACL["guest"]["#{Fluence::OPTIONS.pages_prefix}/hidden/*"] = Acl::Perm::None
+      Fluence::ACL["guest"]["#{Fluence::OPTIONS.media_prefix}/hidden/*"] = Acl::Perm::None
+      begin
+        html = Fluence::Markdown.to_html(
+          "[Secret Plans](/pages/hidden/secret) and [a file](/media/hidden/secret/plans.pdf) and [Visible](/pages/visible)",
+          Fluence::USERS.default.not_nil!
+        )
+        html.should_not contain "Secret Plans"
+        html.should_not contain "hidden/secret"
+        html.should contain "#{Fluence::OPTIONS.inaccessible_label}</span>"
+        html.should contain %(<a href="/pages/visible">Visible</a>)
+      ensure
+        Fluence::ACL["guest"].delete "#{Fluence::OPTIONS.pages_prefix}/hidden/*"
+        Fluence::ACL["guest"].delete "#{Fluence::OPTIONS.media_prefix}/hidden/*"
+      end
+    end
+  end
+
+  it "resolves a relative link the same way the page menu and intlinks do, before checking access" do
+    with_each_storage do |_, _|
+      Fluence::ACL["guest"]["#{Fluence::OPTIONS.pages_prefix}/hidden/*"] = Acl::Perm::None
+      begin
+        # Written on page "new-page" (context_name ""), "hidden/test2" is a
+        # sibling target and resolves to /pages/hidden/test2 — same as the
+        # browser resolving the href against the page's own URL.
+        html = Fluence::Markdown.to_html(
+          "[test](hidden/test2)", Fluence::USERS.default.not_nil!, ""
+        )
+        html.should_not contain "hidden/test2"
+        html.should contain "#{Fluence::OPTIONS.inaccessible_label}</span>"
+      ensure
+        Fluence::ACL["guest"].delete "#{Fluence::OPTIONS.pages_prefix}/hidden/*"
+      end
+    end
+  end
+
+  it "replaces an embedded image the reader can't read with the image-inaccessible label, dropping its src" do
+    with_each_storage do |_, _|
+      Fluence::ACL["guest"]["#{Fluence::OPTIONS.media_prefix}/hidden/*"] = Acl::Perm::None
+      begin
+        html = Fluence::Markdown.to_html(
+          "![Secret Diagram](/media/hidden/plans.png) and ![Visible](/media/visible.png)",
+          Fluence::USERS.default.not_nil!
+        )
+        html.should_not contain "Secret Diagram"
+        html.should_not contain "hidden/plans.png"
+        html.should contain "#{Fluence::OPTIONS.image_inaccessible_label}</span>"
+        html.should contain %(<img src="/media/visible.png" alt="Visible" />)
+      ensure
+        Fluence::ACL["guest"].delete "#{Fluence::OPTIONS.media_prefix}/hidden/*"
+      end
+    end
+  end
 end
 
 describe Fluence::WikilinkMigration do

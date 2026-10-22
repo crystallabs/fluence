@@ -24,12 +24,16 @@ module Fluence::Helpers::Page
     end
   end
 
-  # Builds the tree of all pages from the catalog in one pass, siblings
-  # ordered by name.
+  # Builds the tree of the pages *current_user* may read, from the
+  # catalog in one pass, siblings ordered by name. A directory carries no
+  # ACL of its own, so an unreadable page simply omits its name from the
+  # tree; a directory that exists only to route to unreadable pages never
+  # gets a node at all, rather than showing as an empty, un-openable entry.
   def page_tree : Array(TreeNode)
     roots = [] of TreeNode
     index = {} of String => TreeNode
     titles = Fluence::PAGES.titles
+    titles = titles.select { |name, _| Fluence::ACL.permitted? current_user, "#{Fluence::OPTIONS.pages_prefix}/#{name}", Acl::Perm::Read }
     titles.keys.sort!.each do |name|
       siblings = roots
       path = ""

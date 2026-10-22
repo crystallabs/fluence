@@ -41,7 +41,7 @@ class PagesController < ApplicationController
   private def show_revision(page, rev)
     commit = commit_or_redirect(page, rev) || return
     body = page.read_at commit
-    body_html = Fluence::Markdown.to_html body
+    body_html = Fluence::Markdown.to_html body, current_user, page.name
     writable = Fluence::ACL.permitted? current_user, page.url, Acl::Perm::Write
     tree = page_tree
     title = "#{page.title} @ #{commit.short_oid} - #{title()}"
@@ -73,7 +73,7 @@ class PagesController < ApplicationController
 
   private def show_show(page, media)
     body = page.exists? ? (page.read rescue "") : ""
-    body_html = Fluence::Markdown.to_html body
+    body_html = Fluence::Markdown.to_html body, current_user, page.name
     last_commit = page.exists? ? page.history(1).first? : nil
     Fluence::ACL.load!
     writable = Fluence::ACL.permitted? current_user, page.url, Acl::Perm::Write
@@ -281,7 +281,7 @@ class PagesController < ApplicationController
       return
     end
     @env.response.status_code = 404 if pages.empty?
-    sections = pages.map { |page| {page, Fluence::Markdown.to_html(page.read)} }
+    sections = pages.map { |page| {page, Fluence::Markdown.to_html(page.read, current_user, page.name)} }
     tree = page_tree
     title = "Pages titled '#{slug}' - #{title()}"
     render "titles.slang"
