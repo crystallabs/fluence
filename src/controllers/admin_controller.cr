@@ -24,8 +24,11 @@ class AdminController < ApplicationController
   # post /admin/users/delete
   def user_delete
     acl_permit! :write
-    Fluence::USERS.transaction! { |users| users.delete params.body["username"] }
-    flash["success"] = "The user #{params.body["username"]} has been deleted."
+    attempt do
+      username = params.body["username"]
+      Fluence::USERS.transaction! { |users| users.delete username }
+      flash["success"] = "The user #{username} has been deleted."
+    end
     redirect_to "#{Fluence::OPTIONS.admin_prefix}/users"
   end
 
@@ -39,32 +42,30 @@ class AdminController < ApplicationController
   # post /admin/acls/create
   def acl_create
     acl_permit! :write
-    group = params.body["group"]
-    path = params.body["path"]
-    perm_str = params.body["perm"]
-    perm = Acl::PERM_STR[perm_str]
-    Fluence::ACL.transaction! do |acls|
-      acls.add Acl::Group.new group if acls[group]?.nil?
-      acls[group][path] = perm
+    attempt do
+      group = params.body["group"]
+      path = params.body["path"]
+      perm = Acl::PERM_STR[params.body["perm"]]
+      Fluence::ACL.transaction! do |acls|
+        acls.add group unless acls[group]?
+        acls[group][path] = perm
+      end
+      flash["success"] = "ACL #{group} :: #{path} :: #{perm} has been added."
     end
-    flash["success"] = "ACL #{group} :: #{path} :: #{perm} has been added"
     redirect_to "#{Fluence::OPTIONS.admin_prefix}/acls"
   end
 
   # post /admin/acls/update
   def acl_update
     acl_permit! :write
-    begin
+    attempt do
       group = params.body["group"]
       path = params.body["path"]
-      perm_str = params.body["change"]
-      perm = Acl::PERM_STR[perm_str]
+      perm = Acl::PERM_STR[params.body["change"]]
       Fluence::ACL.transaction! do |acls|
         acls[group][path] = perm
       end
       flash["success"] = "ACL #{group} :: #{path} :: #{perm} has been updated."
-    rescue err
-      flash["danger"] = "Unable to process that: #{err.message}."
     end
     redirect_to "#{Fluence::OPTIONS.admin_prefix}/acls"
   end
@@ -72,12 +73,22 @@ class AdminController < ApplicationController
   # post /admin/acls/delete
   def acl_delete
     acl_permit! :write
-    group = params.body["group"]
-    path = params.body["path"]
-    Fluence::ACL.transaction! do |acls|
-      acls[group].delete path
+    attempt do
+      group = params.body["group"]
+      path = params.body["path"]
+      Fluence::ACL.transaction! do |acls|
+        acls[group].delete path
+      end
+      flash["success"] = "ACL #{group} :: #{path} has been deleted."
     end
-    flash["success"] = "ACL #{group} :: #{path} has been deleted."
     redirect_to "#{Fluence::OPTIONS.admin_prefix}/acls"
+  end
+
+  # Runs the block; a failure (missing form field, unknown group or
+  # user...) becomes a flash message instead of an error page.
+  private def attempt(&)
+    yield
+  rescue err
+    flash["danger"] = "Unable to process that: #{err.message}."
   end
 end

@@ -24,6 +24,12 @@ module Fluence
     # the first level-1 heading, obtained from storage in one pass; content
     # without one falls back to the last component of its name.
     def titles : Hash(String, String)
+      titles names
+    end
+
+    # Titles of the given *names* (see `#titles`), for callers that have
+    # listed them already.
+    def titles(names : Array(String)) : Hash(String, String)
       heads = T.titled? ? storage.headings(@prefix) : {} of String => String
       ret = {} of String => String
       names.each do |name|
@@ -57,38 +63,17 @@ module Fluence
     # `{key => {display_key, entry_or_nil}}`; nil marks a subdirectory level.
     def children1(name : String = "")
       ret = {} of String => {String, T?}
-      titles_map = titles
+      all = names
+      titles_map = titles all
       pattern = name.empty? ? /^(.+?)($|\/)/ : /^(#{Regex.escape(name)}\/(.+?))($|\/)/
       key_group = name.empty? ? 1 : 2
       last_group = name.empty? ? 2 : 3
-      names.each do |n|
+      all.each do |n|
         if md = n.match pattern
           key = md[key_group].to_s
           val = md[last_group]? == "/" ? nil : entry_with_title(n, titles_map)
           ret[md[1]] = {key, val} if !ret[md[1]]? || val
         end
-      end
-      ret
-    end
-
-    # Returns all entries below *page* as `{name => {basename, entry}}`.
-    def children(page : T)
-      ret = {} of String => {String, T}
-      titles_map = titles
-      names.each do |n|
-        if md = n.match /^#{Regex.escape(page.name)}\/.*?([^\/]+)$/
-          ret[n] = {md[1].to_s, entry_with_title(n, titles_map)}
-        end
-      end
-      ret
-    end
-
-    # Returns all entries as `{name => {name, entry}}`.
-    def children
-      ret = {} of String => {String, T}
-      titles_map = titles
-      names.each do |n|
-        ret[n] = {n, entry_with_title(n, titles_map)}
       end
       ret
     end

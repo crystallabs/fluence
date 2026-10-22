@@ -8,13 +8,11 @@ module Fluence::WikilinkMigration
   WIKILINK = /(?<!\\)\[\[([^\[\]\|\n]+)(?:\|([^\[\]\n]*))?\]\]/
 
   # Converts [[link]] and [[link|title]] in *content* to [title](url).
-  # Fenced and indented code blocks are left untouched.
+  # Code (see `Page::Lines`) is left untouched.
   def self.convert(content : String, context : Fluence::Page) : String
-    code_block = false
     String.build(content.bytesize) do |b|
-      content.each_line(chomp: false) do |line|
-        code_block = !code_block if line.starts_with? "```"
-        if code_block || line.starts_with?("    ")
+      Page::Lines.each(content) do |line, code|
+        if code
           b << line
         else
           b << line.gsub(WIKILINK) do

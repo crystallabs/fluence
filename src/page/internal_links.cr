@@ -71,14 +71,11 @@ class Fluence::Page < Fluence::File
     end
 
     # Yields {target_start, target_end, target} for every match of *pattern*
-    # (whose first group is the target), skipping fenced and indented code blocks.
+    # (whose first group is the target), skipping code (see `Page::Lines`).
     private def self.each_target(content : String, pattern : Regex, &)
       offset = 0
-      code_block = false
-      content.each_line(chomp: false) do |line|
-        if line.starts_with? "```"
-          code_block = !code_block
-        elsif !code_block && !line.starts_with?("    ")
+      Page::Lines.each(content) do |line, code|
+        unless code
           line.scan(pattern) do |match|
             yield offset + match.begin(1), offset + match.end(1), match[1]
           end

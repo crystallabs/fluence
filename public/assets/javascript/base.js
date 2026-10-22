@@ -97,7 +97,7 @@ Fluence.editor.saveAndContinue = function(form) {
 
 Fluence.mde_options = function(can_edit) {
 	var delay = Fluence.settings.autosave_delay;
-	options = {
+	var options = {
 		// All assets are served locally; never let the editor pull
 		// Font Awesome or spell-checker dictionaries from a CDN.
 		autoDownloadFontAwesome: false,

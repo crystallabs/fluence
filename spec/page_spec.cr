@@ -8,6 +8,23 @@ describe Fluence::Page do
     page.path.should eq "pages/home.md"
   end
 
+  it "slugifies every character that is not alphanumeric or a slash" do
+    Fluence::Page.title_to_slug("Hello, World^2 /x").should eq "hello-world-2-/x"
+    Fluence::Page.new("A^B/c d").name.should eq "a-b/c-d"
+    Fluence::Media.title_to_slug("Shot^1.PNG").should eq "Shot-1.PNG"
+    Fluence::Page.canonical_name?("a^b").should be_false
+  end
+
+  it "tells code lines from prose" do
+    content = "# T\n```\n# c\n```\n    # i\n## U\r\n"
+    lines = [] of {String, Bool}
+    Fluence::Page::Lines.each(content) { |line, code| lines << {line, code} }
+    lines.should eq [{"# T\n", false}, {"```\n", true}, {"# c\n", true}, {"```\n", true}, {"    # i\n", true}, {"## U\r\n", false}]
+    lines.join(&.[0]).should eq content
+
+    Fluence::Page::TableOfContent.toc(content).should eq [{1, "T"}, {2, "U"}]
+  end
+
   it "derives title, toc, and intlinks from content" do
     with_each_storage do |storage, kind|
       page = Fluence::Page.new("guide")

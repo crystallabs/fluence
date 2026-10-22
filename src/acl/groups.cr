@@ -27,19 +27,14 @@ class Acl::Groups < Lockable
     self
   end
 
-  # Read the file and erase the content, skip if the file does not exists
+  # Reads the groups from the file, discarding in-memory modifications.
+  # A missing or empty file holds no groups; a malformed one raises rather
+  # than silently yielding no groups at all (which would lock everyone
+  # out, and be persisted by the next save).
   def load!
-    if File.exists?(@file) && (new_groups = Acl::Groups.read(@file) rescue nil)
-      @groups = new_groups.groups
-      # @file = groups.file
-    else
-      @groups = {} of String => Acl::Group
-    end
+    content = File.exists?(@file) ? File.read(@file) : ""
+    @groups = content.blank? ? {} of String => Acl::Group : Acl::Groups.from_yaml(content).groups
     self
-  end
-
-  def self.read(file : String)
-    Acl::Groups.from_yaml(File.read file)
   end
 
   # Check if an `Entity` has a group with the required permissions to operate.

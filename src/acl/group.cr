@@ -50,30 +50,20 @@ class Acl::Group
   # guest.permitted "/other", Acl::Perm::Read   # => false
   # ```
   def permitted?(path : String, access : Acl::Perm) : Bool
-    matched_permissions = @permissions.select { |pe, _| pe.acl_match?(path) }
-    if matched_permissions.empty?
-      default.to_i >= access.to_i
-    else
-      # keep the longest path
-      match = matched_permissions.reduce { |l, r| l[0] >= r[0] ? l : r }
-      match[1].to_i >= access.to_i
-    end
+    matching(path).to_i >= access.to_i
   end
 
-  # Tries to match the *path* with the permissions of this group.
-  # If select every matching path and get the maximum permission among them.
+  # The permission of the most specific (longest) pattern matching *path*;
+  # nil when no pattern matches.
   def matching?(path : String) : Acl::Perm?
     founds = @permissions.select { |ppath, _| ppath.acl_match?(path) }
     return nil if founds.empty?
-    found_min_size = founds.reduce { |left, right| left[0].size >= right[0].size ? left : right }
-    found_min_size[1]
+    founds.max_by { |ppath, _| ppath.size }[1]
   end
 
-  # Same as Path[String]? but returns the default value if not found
+  # Like `#matching?`, but the group's default when no pattern matches.
   def matching(path : String) : Acl::Perm
-    acl = self.matching?(path)
-    return @default if acl.nil?
-    acl
+    matching?(path) || @default
   end
 
   # Tries to find the exact *path* with the permissions of this group.

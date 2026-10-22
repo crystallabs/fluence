@@ -72,15 +72,16 @@ class PagesController < ApplicationController
   end
 
   private def show_show(page, media)
-    body = page.exists? ? (page.read rescue "") : ""
+    exists = page.exists?
+    body = exists ? (page.read rescue "") : ""
     body_html = Fluence::Markdown.to_html body, current_user, page.name
-    last_commit = page.exists? ? page.history(1).first? : nil
+    last_commit = exists ? page.history(1).first? : nil
     Fluence::ACL.load!
     writable = Fluence::ACL.permitted? current_user, page.url, Acl::Perm::Write
-    body = page.default_content if writable && !page.exists?
-    open_in_edit = open_in_edit? page
+    body = page.default_content if writable && !exists
+    open_in_edit = open_in_edit? page, exists
 
-    if !page.exists?
+    unless exists
       flash["info"] = "The page '#{page.name}' does not exist yet."
       if Fluence::ACL.permitted?(current_user, request.path, Acl::Perm::Write)
         flash["info"] += " You could create it by typing and saving new content."
@@ -103,9 +104,10 @@ class PagesController < ApplicationController
   end
 
   # Whether the editor opens in edit mode (as opposed to preview) for
-  # *page*: the ?edit and ?view query parameters decide, then the user's
-  # editor_mode setting, otherwise the open_*_in_edit options.
-  private def open_in_edit?(page) : Bool
+  # *page* (which *exists* or not): the ?edit and ?view query parameters
+  # decide, then the user's editor_mode setting, otherwise the
+  # open_*_in_edit options.
+  private def open_in_edit?(page, exists : Bool) : Bool
     return true if params.query.has_key? "edit"
     return false if params.query.has_key? "view"
     case current_user.settings.editor_mode
@@ -114,8 +116,8 @@ class PagesController < ApplicationController
     end
     options = Fluence::OPTIONS
     options.open_in_edit ||
-      (!page.exists? && options.open_new_in_edit) ||
-      (page.exists? && page.size == 0 && options.open_empty_in_edit)
+      (!exists && options.open_new_in_edit) ||
+      (exists && page.size == 0 && options.open_empty_in_edit)
   end
 
   # post /pages/*path
@@ -164,9 +166,9 @@ class PagesController < ApplicationController
             end
           end
 
-          page.rename! current_user, new_name, !!params.body["input-page-overwrite"]?, subtree: false, intlinks: !!params.body["input-page-intlinks"]?
+          page.rename! current_user, new_name, !!params.body["input-page-overwrite"]?, intlinks: !!params.body["input-page-intlinks"]?
           flash["success success-#{old_name}"] = "Page '#{old_name}' has been renamed to '#{page.name}'"
-        rescue e : Fluence::Page::AlreadyExists | Fluence::Error409
+        rescue e : Fluence::Page::AlreadyExists | Fluence::Error409 | Fluence::Error403
           flash["danger danger-#{page.name}"] = e.to_s
           redirect_to old_url
           return
@@ -227,7 +229,7 @@ class PagesController < ApplicationController
   def sitemap
     acl_permit! :read
     tree = page_tree
-    media = Fluence::MEDIA.children1
+    media = media_tree
     title = "Sitemap - #{title()}"
     render "sitemap.slang"
   end

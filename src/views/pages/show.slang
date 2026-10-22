@@ -38,7 +38,7 @@
               .small.text-body-secondary#no-attachments hidden="hidden" None.
             ul#attachments.list-unstyled.mb-0
               - attachments.each do |m|
-                - filename = m.title || m.name
+                - filename = m.title
                 li.d-flex.align-items-center.mb-1
                   a.me-auto.text-break href="#{m.url}" = filename
                   - if writable
@@ -90,7 +90,7 @@
               - page.intlinks.each do |linkspec|
                 - pg = Fluence::PAGES[linkspec[1]]? || Fluence::Page.new linkspec[1]
                 li
-                  a href="#{pg.url}" = pg.title || pg.name
+                  a href="#{pg.url}" = pg.title
         - if writable
           section#page-management
             h6.section-title

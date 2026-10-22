@@ -63,10 +63,6 @@ class Fluence::Media < Fluence::File
 		Fluence::MEDIA.children1 self
 	end
 
-	def children
-		Fluence::MEDIA.children self
-	end
-
 	# Does any media entry exist below this one?
 	def directory?
 		prefix = @name + "/"
@@ -91,6 +87,6 @@ class Fluence::Media < Fluence::File
 	end
 
 	def self.title_to_slug(title : String) : String
-		title.gsub(/[^[:alnum:]^\/\.]+/, "-")
+		title.gsub(/[^[:alnum:]\/.]+/, "-")
 	end
 end

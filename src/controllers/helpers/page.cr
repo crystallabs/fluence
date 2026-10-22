@@ -1,13 +1,13 @@
 module Fluence::Helpers::Page
-  # A node of the page tree shown in the page menu and the sitemap: a page,
-  # a directory level without a page of its own, or both.
+  # A node of the tree of pages (page menu, sitemap) or of media (sitemap):
+  # an entry, a directory level without an entry of its own, or both.
   class TreeNode
     getter name : String
     property title : String
     property? page : Bool
     getter children = [] of TreeNode
 
-    def initialize(@name, @title, @page)
+    def initialize(@name, @title, @page, @url_prefix : String = Fluence::OPTIONS.pages_prefix)
     end
 
     def directory? : Bool
@@ -15,7 +15,7 @@ module Fluence::Helpers::Page
     end
 
     def url : String
-      "#{Fluence::OPTIONS.pages_prefix}/#{@name}"
+      "#{@url_prefix}/#{@name}"
     end
 
     # Id of the collapsible element holding the children.
@@ -30,10 +30,18 @@ module Fluence::Helpers::Page
   # tree; a directory that exists only to route to unreadable pages never
   # gets a node at all, rather than showing as an empty, un-openable entry.
   def page_tree : Array(TreeNode)
+    catalog_tree Fluence::PAGES, Fluence::OPTIONS.pages_prefix
+  end
+
+  # Likewise for all media.
+  def media_tree : Array(TreeNode)
+    catalog_tree Fluence::MEDIA, Fluence::OPTIONS.media_prefix
+  end
+
+  private def catalog_tree(catalog, url_prefix : String) : Array(TreeNode)
     roots = [] of TreeNode
     index = {} of String => TreeNode
-    titles = Fluence::PAGES.titles
-    titles = titles.select { |name, _| Fluence::ACL.permitted? current_user, "#{Fluence::OPTIONS.pages_prefix}/#{name}", Acl::Perm::Read }
+    titles = catalog.titles.select { |name, _| Fluence::ACL.permitted? current_user, "#{url_prefix}/#{name}", Acl::Perm::Read }
     titles.keys.sort!.each do |name|
       siblings = roots
       path = ""
@@ -41,7 +49,7 @@ module Fluence::Helpers::Page
       parts.each_with_index do |part, i|
         path = i == 0 ? part : "#{path}/#{part}"
         node = index[path]? || begin
-          new_node = TreeNode.new path, part, false
+          new_node = TreeNode.new path, part, false, url_prefix
           index[path] = new_node
           siblings << new_node
           new_node
@@ -84,15 +92,19 @@ module Fluence::Helpers::Page
       Slang.embed("src/views/pages/page_tree.slang", "str")
     end
   end
-  def add_media(entries, stack = [] of String)
+
+  # Renders *nodes* (from `media_tree`) as a nested list.
+  def add_media(nodes : Array(TreeNode))
     String.build do |str|
-      Slang.embed("src/views/pages/media.directory.slang", "str")
+      Slang.embed("src/views/pages/media_tree.slang", "str")
     end
   end
 
-  # TODO: move that
+  # One TOC entry linking to the heading's anchor (see
+  # `Fluence::Markdown::Renderer#heading`). Heading text comes from page
+  # content, so it is escaped.
   def create_toc_line(line, current_id, ends = true)
-    "<li><a href=\"##{Fluence::Page.sanitize line}\">#{line}</a>#{ends ? "</li>" : nil}\n"
+    "<li><a href=\"##{Fluence::Page.sanitize line}\">#{HTML.escape line}</a>#{ends ? "</li>" : nil}\n"
   end
 
   # TODO: move that

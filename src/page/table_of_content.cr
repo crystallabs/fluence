@@ -4,20 +4,14 @@ class Fluence::Page < Fluence::File
     alias Toc = Array(TocLine)
 
     # Builds the table of contents from markdown *content*, skipping
-    # fenced code blocks.
+    # code (see `Page::Lines`).
     def self.toc(content : String) : Toc
       toc = Toc.new
-      code_block = false
-
-      content.each_line do |line|
-        if line =~ /^```/
-          code_block = !code_block
+      Page::Lines.each(content) do |line, code|
+        next if code
+        if toc_line = get_toc_line line.chomp
+          toc << toc_line
         end
-
-        next if code_block
-
-        toc_line = get_toc_line line
-        toc << toc_line.as(TocLine) unless toc_line.nil?
       end
       toc
     end

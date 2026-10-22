@@ -54,6 +54,18 @@ describe "ACL enforcement over HTTP" do
 end
 
 describe "rename destination check over HTTP" do
+  it "reports an invalid destination name instead of failing" do
+    with_each_storage do |_, _|
+      client = SpecClient.login "editor", "sekrit123"
+      client.post "/pages/movable", {"body" => "# Movable\n"}
+
+      response = client.post "/pages/movable", {"rename" => "rename", "input-page-name" => "a//b"}
+      response.status_code.should eq 302
+      response.headers["Location"].should eq "/pages/movable"
+      Fluence::Page.new("movable").exists?.should be_true
+    end
+  end
+
   it "refuses renaming onto a write-protected destination" do
     with_each_storage do |_, _|
       client = SpecClient.login "editor", "sekrit123"
@@ -808,6 +820,72 @@ describe "sidebar of a page that does not exist" do
       body = SpecClient.new.get("/pages/not-yet").body
       body.should contain "This page does not exist yet."
       body.should_not contain "Click Save"
+    end
+  end
+end
+
+describe "table of contents" do
+  it "escapes heading text" do
+    with_each_storage do |_, _|
+      Fluence::Page.new("toc-esc").update! SPEC_USER, "# Toc Esc\n## A <b>bold</b> & \"quoted\" one\n"
+
+      body = SpecClient.login("editor", "sekrit123").get("/pages/toc-esc").body
+      entry = body.match!(/<li><a href="#([^"]*)">(A .*?)<\/a>/)
+      entry[1].should eq "a-b-bold-/b-quoted-one"
+      entry[2].should eq "A &lt;b&gt;bold&lt;/b&gt; &amp; &quot;quoted&quot; one"
+      body.should_not contain "<b>bold</b>"
+
+      # Guests get the rendered body (with the heading) but no TOC.
+      guest = SpecClient.new.get("/pages/toc-esc").body
+      guest.should contain %(<h2 id="#{entry[1]}">)
+      guest.should_not contain "<b>bold</b>"
+    end
+  end
+end
+
+describe "sitemap" do
+  it "lists media as a tree of links" do
+    with_each_storage do |_, _|
+      Fluence::Media.new("docs/guide/shot.png").update! SPEC_USER, "PNG"
+      Fluence::Media.new("docs/top.txt").update! SPEC_USER, "T"
+      Fluence::Media.new("root.txt").update! SPEC_USER, "R"
+
+      body = SpecClient.new.get("/sitemap").body
+      body.should contain %(<a href="/media/docs/guide/shot.png">shot.png</a>)
+      body.should contain %(<a href="/media/docs/top.txt">top.txt</a>)
+      body.should contain %(<a href="/media/root.txt">root.txt</a>)
+      body.should_not contain %(href="/media/docs")
+      body.index!("<span class=\"text-body-secondary\">docs</span>").should be < body.index!("shot.png")
+    end
+  end
+end
+
+describe "admin forms" do
+  it "report a failure as a flash message instead of an error page" do
+    with_each_storage do |_, _|
+      backup = File.read(Fluence::USERS.file)
+      begin
+        Fluence::USERS.transaction!(&.list.clear)
+        admin = SpecClient.new
+        admin.post "/users/register", {"username" => "founder", "password" => "sekrit123"}
+        admin.post "/users/login", {"username" => "founder", "password" => "sekrit123"}
+
+        response = admin.post "/admin/users/delete", {"username" => "nobody"}
+        response.status_code.should eq 302
+        response.headers["Location"].should eq "/admin/users"
+        admin.get("/admin/users").body.should contain "Unable to process that: User nobody is not in the list."
+
+        response = admin.post "/admin/acls/delete", {"group" => "no-such-group", "path" => "/x"}
+        response.status_code.should eq 302
+        admin.get("/admin/acls").body.should contain "Unable to process that"
+
+        response = admin.post "/admin/acls/create", {"group" => "g", "path" => "/x", "perm" => "bogus"}
+        response.status_code.should eq 302
+        Fluence::ACL["g"]?.should be_nil
+      ensure
+        File.write(Fluence::USERS.file, backup)
+        Fluence::USERS.load!
+      end
     end
   end
 end

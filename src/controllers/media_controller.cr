@@ -7,8 +7,6 @@ class MediaController < ApplicationController
   end
 
   private def show_show(page)
-    Fluence::ACL.load!
-
     unless page.exists?
       @env.response.status_code = 404
       return "Not found: #{page.name}"
@@ -59,7 +57,7 @@ class MediaController < ApplicationController
       old_url = main_page.url
       begin
         # The user must be permitted to write at the destination too.
-        new_url = "#{Fluence::OPTIONS.media_prefix}/#{Fluence::Media.sanitize(new_main_name).strip "/"}"
+        new_url = Fluence::Media.new(new_main_name).url
         unless Fluence::ACL.permitted?(current_user, new_url, Acl::Perm::Write)
           flash["danger"] = "You are not permitted to write to '#{new_url}'."
           redirect_to old_url
@@ -68,7 +66,7 @@ class MediaController < ApplicationController
 
         main_page.rename! current_user, new_main_name, !!params.body["input-page-overwrite"]?
         flash["success success-#{old_name}"] = "Media #{old_name} has been renamed to #{main_page.name}"
-      rescue e : Fluence::Media::AlreadyExists | Fluence::Error409
+      rescue e : Fluence::Media::AlreadyExists | Fluence::Error409 | Fluence::Error403
         flash["danger danger-#{main_page.name}"] = e.to_s
         redirect_to old_url
         return
@@ -166,7 +164,7 @@ class MediaController < ApplicationController
     if error
       {success: false, error: error}.to_json
     elsif media = saved
-      {success: true, name: media.title || media.name, url: media.url}.to_json
+      {success: true, name: media.title, url: media.url}.to_json
     else
       {success: false, error: "No file was uploaded."}.to_json
     end
