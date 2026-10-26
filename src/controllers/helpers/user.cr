@@ -25,7 +25,7 @@ module Fluence::Helpers::User
     unless user_signed_in?
       if (name = cookies["user.name"]?) && (token = cookies["user.token"]?)
         if user = Fluence::USERS.auth_token?(name.value, token.value)
-          session.string("user.name", user.name)
+          start_session_for user.name
           set_login_cookies_for(user.name, replacing: token.value)
         else
           Log.debug { "Invalid cookies credentials" }
@@ -34,6 +34,16 @@ module Fluence::Helpers::User
         end
       end
     end
+  end
+
+  # Logs the user in under a new session id, so that an id the browser
+  # had before logging in (possibly planted by an attacker) is never
+  # kept. The flash is read first so pending messages survive into the
+  # new session (it is committed to it after the action).
+  def start_session_for(username : String)
+    flash
+    session.reset
+    session.string("user.name", username)
   end
 
   # The remember-me token of this browser: the one set by this response

@@ -383,6 +383,24 @@ describe "session and cookie hardening" do
     end
   end
 
+  it "rotates the session id at login and keeps the login flash" do
+    client = SpecClient.new
+    client.post "/users/register", {"username" => "rotator", "password" => "sekrit123"}
+    client.get "/users/login"
+    before = client.jar["session_id"].value
+
+    response = client.post "/users/login", {"username" => "rotator", "password" => "sekrit123"}
+    response.status_code.should eq 302
+    after = client.jar["session_id"].value
+    after.should_not eq before
+    client.get("/users/settings").body.should contain "You are now logged in as user &#39;rotator&#39;."
+
+    # The pre-login session id does not carry the login.
+    stale = SpecClient.new
+    stale.jar << HTTP::Cookie.new("session_id", before)
+    stale.get("/users/settings").headers["Location"].should eq "/users/login"
+  end
+
   it "does not echo arbitrary client cookies back into the response" do
     with_each_storage do |_, _|
       Fluence::Page.new("readable").update! SPEC_USER, "# Readable\n"
