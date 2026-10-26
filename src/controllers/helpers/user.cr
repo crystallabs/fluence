@@ -96,7 +96,15 @@ module Fluence::Helpers::User
       Log.debug { "PERMITTED #{current_user.name} #{{{path}}} #{Acl::PERM[{{perm}}]}" }
     else
       Log.debug { "NOT PERMITTED #{current_user.name} #{{{path}}} #{Acl::PERM[{{perm}}]}" }
-      flash["danger"] = "You are not permitted to access this resource (#{{{path}}}, #{{{perm}}})."
+      %message = "You are not permitted to access this resource (#{{{path}}}, #{{{perm}}})."
+      # The fetch calls of base.js show the error of a JSON answer; a
+      # redirect would reach them as an unparseable HTML page.
+      if wants_json?
+        @env.response.status_code = 403
+        @env.response.content_type = "application/json"
+        return {success: false, error: %message}.to_json
+      end
+      flash["danger"] = %message
       redirect_to case {{path}}
       when Fluence::OPTIONS.homepage
         "#{Fluence::OPTIONS.users_prefix}/register"

@@ -731,10 +731,20 @@ describe "save and continue over HTTP" do
 
       response = client.post "/pages/draft", {"body" => "# Draft\nstep three\n"}
       response.headers["Location"].should eq "/pages/draft"
+    end
+  end
 
-      response = SpecClient.new.request "POST", "/pages/draft", headers, URI::Params.encode({"body" => "# Defaced\n"})
-      response.status_code.should eq 302
-      Fluence::Page.new("draft").read.should eq "# Draft\nstep three\n"
+  it "answers a guest's JSON request with 403 and the error instead of a redirect" do
+    with_each_storage do |_, _|
+      Fluence::Page.new("guarded").update! SPEC_USER, "# Guarded\n"
+
+      headers = HTTP::Headers{"Content-Type" => "application/x-www-form-urlencoded", "Accept" => "application/json"}
+      response = SpecClient.new.request "POST", "/pages/guarded", headers,
+        URI::Params.encode({"body" => "# Defaced\n", "continue" => "1"})
+      response.status_code.should eq 403
+      response.headers["Content-Type"].should eq "application/json"
+      response.body.should eq %({"success":false,"error":"You are not permitted to access this resource (/pages/guarded, write)."})
+      Fluence::Page.new("guarded").read.should eq "# Guarded\n"
     end
   end
 end

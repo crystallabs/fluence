@@ -204,7 +204,7 @@ class PagesController < ApplicationController
       error = "Error: cannot update #{page.name}, #{err.message}"
     end
 
-    if request.headers["Accept"]?.try &.includes?("application/json")
+    if wants_json?
       @env.response.content_type = "application/json"
       return (error ? {success: false, error: error} : {success: true, title: page.title}).to_json
     end

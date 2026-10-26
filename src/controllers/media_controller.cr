@@ -89,7 +89,7 @@ class MediaController < ApplicationController
       end
     end
 
-    if request.headers["Accept"]?.try &.includes?("application/json")
+    if wants_json?
       @env.response.content_type = "application/json"
       return (error ? {success: false, error: error} : {success: true}).to_json
     end
