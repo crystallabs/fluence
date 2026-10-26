@@ -133,8 +133,9 @@ class Fluence::Users < Lockable
   # constant time so the token cannot be guessed from response timings.
   def auth_token?(name : String, token : String) : User?
     user = find?(name)
-    return unless user && (stored = user.token)
-    Crypto::Subtle.constant_time_compare(stored, token) ? user : nil
+    return unless user
+    valid = user.tokens.reduce(false) { |found, stored| Crypto::Subtle.constant_time_compare(stored, token) || found }
+    valid ? user : nil
   end
 
   # Operation read (erase the internal list).

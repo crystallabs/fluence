@@ -48,7 +48,31 @@ describe "serialization" do
     u2 = Fluence::User.from_yaml u1.to_yaml
     u2.name.should eq "tester"
     u2.groups.should eq %w[user admin]
-    u2.token.should be_nil
+    u2.tokens.should be_empty
+  end
+
+  it "reads the single login token of old meta/users files" do
+    yaml = <<-YAML
+      name: old
+      password: x
+      groups: [user]
+      token: abc123
+      YAML
+    user = Fluence::User.from_yaml yaml
+    user.tokens.should eq %w[abc123]
+    user.to_yaml.should_not match /^token:/m
+    Fluence::User.from_yaml(user.to_yaml).tokens.should eq %w[abc123]
+
+    users = Fluence::Users.from_yaml <<-YAML
+      file: /dev/null
+      list:
+        old:
+          name: old
+          password: x
+          groups: [user]
+          token: abc123
+      YAML
+    users.auth_token?("old", "abc123").should be users["old"]
   end
 
   it "reads timestamps written by Crystal < 1.0" do

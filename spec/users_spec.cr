@@ -80,11 +80,27 @@ describe Fluence::Users do
     users = Fluence::Users.new File.tempname("fluence-spec-users")
     users.add Fluence::User.new("alice", "pw")
     users.auth_token?("alice", "anything").should be_nil
-    token = users["alice"].generate_new_token!
+    token = users["alice"].issue_token!
     users.auth_token?("alice", token).should be users["alice"]
     users.auth_token?("alice", token.rchop).should be_nil
     users.auth_token?("alice", "").should be_nil
     users.auth_token?("nobody", token).should be_nil
+  end
+
+  it "keeps one token per browser, at most ten" do
+    user = Fluence::User.new("alice", "pw")
+    first = user.issue_token!
+    second = user.issue_token!
+    user.tokens.should eq [first, second]
+    user.revoke_token first
+    user.tokens.should eq [second]
+
+    issued = Array.new(12) { user.issue_token! }
+    user.tokens.size.should eq Fluence::User::MAX_TOKENS
+    user.tokens.should eq issued.last(10)
+
+    user.clear_tokens!
+    user.tokens.should be_empty
   end
 end
 

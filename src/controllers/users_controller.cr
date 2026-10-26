@@ -24,6 +24,7 @@ class UsersController < ApplicationController
   # get /users/logout
   def logout
     acl_permit! :read
+    forget_login_token
     session.destroy
     delete_login_cookies
     redirect_to "#{Fluence::OPTIONS.users_prefix}/login"

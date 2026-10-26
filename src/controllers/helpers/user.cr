@@ -1,19 +1,27 @@
 module Fluence::Helpers::User
-  # The username+token are set into the cookies in order to allow future auto-login
-  def set_login_cookies_for(username)
-    Fluence::USERS.transaction!(&.[username].generate_new_token!)
-    token = Fluence::USERS[username].token.to_s
+  # Issues a new remember-me token for the user and sets it, with the
+  # username, into the cookies in order to allow future auto-login. The
+  # token this browser presented, if any, is revoked: each browser holds
+  # one token, and the user's other browsers keep theirs.
+  def set_login_cookies_for(username : String, replacing : String? = presented_token)
+    token = ""
+    Fluence::USERS.transaction! do |users|
+      user = users[username]
+      replacing.try { |old| user.revoke_token old }
+      token = user.issue_token!
+    end
     set_cookie name: "user.name", value: username, expires: 14.days.from_now
     set_cookie name: "user.token", value: token, expires: 14.days.from_now
   end
 
-  # If a cookie is set but the user is not signed in, try to use it and renew the cookie
+  # If a cookie is set but the user is not signed in, try to use it and
+  # rotate the token: the presented one is replaced by a new one.
   def uses_login_cookies
     unless user_signed_in?
       if (name = cookies["user.name"]?) && (token = cookies["user.token"]?)
         if user = Fluence::USERS.auth_token?(name.value, token.value)
           session.string("user.name", user.name)
-          set_login_cookies_for(user.name)
+          set_login_cookies_for(user.name, replacing: token.value)
         else
           Log.debug { "Invalid cookies credentials" }
           delete_cookie "user.name"
@@ -21,6 +29,21 @@ module Fluence::Helpers::User
         end
       end
     end
+  end
+
+  # The remember-me token of this browser: the one set by this response
+  # (after a cookie auto-login rotated it), else the one in the request.
+  def presented_token : String?
+    @env.response.cookies["user.token"]?.try(&.value).presence ||
+      cookies["user.token"]?.try(&.value).presence
+  end
+
+  # Revokes this browser's remember-me token, so it no longer logs in.
+  def forget_login_token
+    name = user_name? || cookies["user.name"]?.try(&.value)
+    token = presented_token
+    return unless name && token && Fluence::USERS.find?(name)
+    Fluence::USERS.transaction! { |users| users[name]?.try &.revoke_token(token) }
   end
 
   def delete_login_cookies

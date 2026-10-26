@@ -2,10 +2,10 @@ require "crypto/bcrypt/password"
 require "../acl/entity"
 require "./settings"
 
-# A `User` consists of name/password/groups/token.
-# The *name* and *groups* is public, the *password* and the *token* are private.
+# A `User` consists of name/password/groups/tokens.
+# The *name* and *groups* is public, the *password* and the *tokens* are private.
 # The password is used to recognize an user when login in with a form for example.
-# The token is used to recognize an user by a cookie for example.
+# The tokens recognize an user by a remember-me cookie, one per browser.
 class Fluence::User
   class Invalid < Exception
   end
@@ -15,8 +15,17 @@ class Fluence::User
   property name : String
   property password : String
   property groups : Array(String)
-  property token : String?
+  # Remember-me login tokens, one per browser, oldest first.
+  property tokens : Array(String) = [] of String
   property settings : Settings = Settings.new
+
+  # Files written before tokens were per browser hold a single scalar
+  # `token:`; it is moved into `tokens` on load and not written back.
+  @[YAML::Field(key: "token")]
+  @legacy_token : String? = nil
+
+  # Remember-me tokens kept per user; issuing one more drops the oldest.
+  MAX_TOKENS = 10
 
   # ```
   # User.new "admin", "password", %w(admin user)
@@ -30,8 +39,15 @@ class Fluence::User
   # registration and login in the suite would otherwise cost ~0.5 s.
   class_property bcrypt_cost : Int32 = Crypto::Bcrypt::DEFAULT_COST
 
-  def initialize(@name, @password, @groups = [] of String, @token : String? = nil)
+  def initialize(@name, @password, @groups = [] of String)
     raise "Invalid name #{@name}" unless @name.matches? NAME # Security: Avoid escaping and injection of code
+  end
+
+  protected def after_initialize
+    if token = @legacy_token
+      @tokens << token unless @tokens.includes? token
+      @legacy_token = nil
+    end
   end
 
   # Encrypts the password using `Crypto::Bcrypt`.
@@ -49,8 +65,23 @@ class Fluence::User
     Crypto::Bcrypt::Password.new @password
   end
 
-  def generate_new_token!
-    @token = Random::Secure.base64 64
+  # Adds a new remember-me token and returns it, dropping the oldest ones
+  # beyond `MAX_TOKENS`.
+  def issue_token! : String
+    token = Random::Secure.base64 64
+    @tokens << token
+    @tokens.shift(@tokens.size - MAX_TOKENS) if @tokens.size > MAX_TOKENS
+    token
+  end
+
+  # Removes a remember-me token (a no-op when it is not one of the user's).
+  def revoke_token(token : String) : Nil
+    @tokens.delete token
+  end
+
+  # Removes all remember-me tokens: no browser can log in by cookie anymore.
+  def clear_tokens! : Nil
+    @tokens.clear
   end
 
   #########################

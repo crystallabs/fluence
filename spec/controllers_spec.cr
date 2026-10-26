@@ -53,6 +53,36 @@ describe "ACL enforcement over HTTP" do
   end
 end
 
+describe "remember-me tokens over HTTP" do
+  it "keeps one token per browser, rotating it on cookie login and revoking it on logout" do
+    first = SpecClient.login "roamer", "sekrit123"
+    second = SpecClient.new
+    second.post "/users/login", {"username" => "roamer", "password" => "sekrit123"}
+    Fluence::USERS.load!["roamer"].tokens.should eq [first.jar["user.token"].value, second.jar["user.token"].value]
+
+    # The first browser, its session expired, logs in by cookie: only
+    # its own token is rotated.
+    presented = first.jar["user.token"].value
+    first.jar.delete "session_id"
+    first.get("/users/settings").status_code.should eq 200
+    rotated = first.jar["user.token"].value
+    rotated.should_not eq presented
+    Fluence::USERS.load!["roamer"].tokens.should eq [second.jar["user.token"].value, rotated]
+
+    stale = SpecClient.new
+    stale.jar << HTTP::Cookie.new("user.name", "roamer")
+    stale.jar << HTTP::Cookie.new("user.token", presented)
+    stale.get("/users/settings").headers["Location"].should eq "/users/login"
+
+    # Logging out revokes this browser's token only.
+    kept = second.jar["user.token"].value
+    first.get "/users/logout"
+    Fluence::USERS.load!["roamer"].tokens.should eq [kept]
+    second.jar.delete "session_id"
+    second.get("/users/settings").status_code.should eq 200
+  end
+end
+
 describe "rename destination check over HTTP" do
   it "reports an invalid destination name instead of failing" do
     with_each_storage do |_, _|
