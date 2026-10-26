@@ -42,8 +42,6 @@ module Fluence
 
   # If there is no "guest" ACL, we assume that the ACL have not been initialized yet
   # and we create the groups "guest", "user", and "admin".
-  # TODO: a proper "installation" procedure should be made to avoid these kind
-  # of operation in a scope
   if ACL["guest"]?.nil?
     ACL.add("guest")
     ACL["guest"]["#{Fluence::OPTIONS.users_prefix}/*"] = Acl::Perm::Write
@@ -80,16 +78,6 @@ module Fluence
     puts "Wikilink migration: #{changed} page(s) converted to standard markdown links."
     exit 0
   end
-
-  #	# Install file watcher on data files.
-  #	# Exact use of the triggers is to be determined later.
-  #	# (It could be used to catch file modifications which happen
-  #	# outside of the wiki, and to automatically update the wiki
-  #	# index. This could be made to work live and report live stream
-  #	# of page and media changes to some admin page)
-  #	watch "data/**/*" do |e|
-  #		"Detected #{e.status} for file #{e.name}"
-  #	end
 end
 
 Kemal.run
