@@ -70,6 +70,15 @@ module Fluence
       end
     end
 
+    # Runs the block with the content state pinned, so that every read in
+    # it sees the same commit even if the repository changes meanwhile; the
+    # block's own writes stay visible to it. Returns the block's value.
+    # Storages without a commit to pin (`WorkTree` reads the filesystem)
+    # simply yield.
+    def snapshot(&)
+      yield
+    end
+
     # Returns the content of the file at *path*, or raises `Error404`.
     abstract def read(path : String) : String
 
@@ -125,9 +134,12 @@ module Fluence
     # repository itself, or the root of the working tree.
     abstract def git_directory : String
 
-    protected def log_args(path : String, limit : Int32) : Array(String)
+    # Arguments for `git log` listing the history of *path* up to *rev*
+    # (default: HEAD).
+    protected def log_args(path : String, limit : Int32, rev : String? = nil) : Array(String)
       args = ["log", "-z", "--follow", "--name-only", "--format=#{LOG_FORMAT}"]
       args << "--max-count=#{limit}" if limit > 0
+      args << rev if rev
       args + ["--", path]
     end
 

@@ -197,3 +197,110 @@ describe Fluence::Storage do
     end
   end
 end
+
+# Runs git plumbing *args* against the bare repository *repo* (with index
+# file *index*), returning the stripped output.
+private def plumbing(repo : String, index : String, args : Array(String), input : String? = nil) : String
+  env = {"GIT_DIR" => repo, "GIT_INDEX_FILE" => index,
+         "GIT_AUTHOR_NAME" => "ext", "GIT_AUTHOR_EMAIL" => "ext@localhost",
+         "GIT_COMMITTER_NAME" => "ext", "GIT_COMMITTER_EMAIL" => "ext@localhost"}
+  output = IO::Memory.new
+  status = Process.run("git", args, env: env, output: output, error: Process::Redirect::Inherit,
+    input: IO::Memory.new(input || ""))
+  raise "git #{args.first} failed" unless status.success?
+  output.to_s.strip
+end
+
+# Commits *content* at *path* straight into the bare repository *repo* with
+# git plumbing, bypassing Fluence like a `git push` would.
+private def external_commit(repo : String, path : String, content : String)
+  index = File.tempname("fluence-spec-index")
+  begin
+    blob = plumbing repo, index, ["hash-object", "-w", "--stdin"], content
+    plumbing repo, index, ["read-tree", "HEAD"]
+    plumbing repo, index, ["update-index", "--add", "--cacheinfo", "100644,#{blob},#{path}"]
+    tree = plumbing repo, index, ["write-tree"]
+    commit = plumbing repo, index, ["commit-tree", tree, "-p", "HEAD", "-m", "external"]
+    plumbing repo, index, ["update-ref", "HEAD", commit]
+  ensure
+    File.delete? index
+  end
+end
+
+describe "Fluence::Storage#snapshot" do
+  it "returns the block's value on each backend" do
+    with_each_storage do |storage, _|
+      storage.snapshot { 42 }.should eq 42
+    end
+  end
+
+  it "keeps reads on the pinned commit while the repository moves on" do
+    with_each_storage do |storage, _|
+      next unless storage.is_a? Fluence::Storage::GitRepo
+      storage.write "pages/a.md", "# Old\n", SPEC_USER, "create a"
+
+      storage.snapshot do
+        external_commit storage.repo, "pages/a.md", "# New\nfresh\n"
+        external_commit storage.repo, "pages/b.md", "# B\n"
+
+        storage.read("pages/a.md").should eq "# Old\n"
+        storage.size("pages/a.md").should eq "# Old\n".bytesize
+        storage.exists?("pages/b.md").should be_false
+        storage.list("pages").should eq ["pages/a.md"]
+        storage.headings("pages").should eq({"pages/a.md" => "Old"})
+        storage.search("fresh", "pages").should be_empty
+        storage.log("pages/a.md").map(&.subject).should eq ["create a"]
+
+        # Another fiber (another request) is not pinned.
+        channel = Channel(String).new
+        spawn { channel.send storage.read("pages/a.md") }
+        channel.receive.should eq "# New\nfresh\n"
+
+        # A nested snapshot keeps the outer pin.
+        storage.snapshot { storage.read("pages/a.md") }.should eq "# Old\n"
+        storage.read("pages/a.md").should eq "# Old\n"
+      end
+
+      # Outside, and in a later snapshot, reads see the new HEAD.
+      storage.read("pages/a.md").should eq "# New\nfresh\n"
+      storage.snapshot { storage.list("pages") }.should eq ["pages/a.md", "pages/b.md"]
+    end
+  end
+
+  it "sees its own writes, built on the live HEAD" do
+    with_each_storage do |storage, _|
+      next unless storage.is_a? Fluence::Storage::GitRepo
+      storage.snapshot do
+        # Pinned while HEAD is still unborn.
+        storage.exists?("pages/a.md").should be_false
+        storage.list("pages").should be_empty
+        storage.write "pages/a.md", "# A\n", SPEC_USER, "create a"
+        storage.read("pages/a.md").should eq "# A\n"
+
+        external_commit storage.repo, "pages/b.md", "# B\n"
+        storage.exists?("pages/b.md").should be_false
+        storage.write "pages/c.md", "# C\n", SPEC_USER, "create c"
+        # The write builds on, and so reveals, the external commit.
+        storage.list("pages").should eq ["pages/a.md", "pages/b.md", "pages/c.md"]
+
+        external_commit storage.repo, "pages/d.md", "# D\n"
+        storage.delete "pages/b.md", SPEC_USER, "delete b"
+        storage.list("pages").should eq ["pages/a.md", "pages/c.md", "pages/d.md"]
+      end
+      storage.read("pages/c.md").should eq "# C\n"
+      git_log(storage).lines.size.should eq 5
+    end
+  end
+
+  it "lets a request see its own write, as Save and continue does" do
+    with_each_storage do |storage, _|
+      next unless storage.is_a? Fluence::Storage::GitRepo
+      client = SpecClient.login "editor", "sekrit123"
+      headers = HTTP::Headers{"Content-Type" => "application/x-www-form-urlencoded", "Accept" => "application/json"}
+      response = client.post "/pages/snap", headers, URI::Params.encode({"body" => "# Snap Title\n"})
+      # The title is read back inside the request's snapshot, which was
+      # pinned before the page existed.
+      JSON.parse(response.body)["title"].should eq "Snap Title"
+    end
+  end
+end

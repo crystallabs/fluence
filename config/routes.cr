@@ -5,7 +5,8 @@ class Router
     macro {{verb.id}}(route, controller, method)
       ::{{verb.id}}(\{{route}}) do |env|
         context = \{{controller}}.new(env)
-        context.\{{method.id}}()
+        # One request reads from one commit (see `Storage#snapshot`).
+        Fluence::Storage.current.snapshot { context.\{{method.id}}() }
       end
     end
   {% end %}

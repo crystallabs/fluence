@@ -11,6 +11,12 @@ module Fluence
 
     @lock = Mutex.new
 
+    # Commits pinned by `#snapshot`, per fiber: requests interleave
+    # whenever one waits for a git process, so a pin can never be shared.
+    # A nil value pins an unborn HEAD (no commit yet).
+    @pins = {} of Fiber => String?
+    @pins_lock = Mutex.new
+
     def initialize(repo : String)
       @repo = ::File.expand_path repo
     end
@@ -27,26 +33,46 @@ module Fluence
       @repo
     end
 
+    # Pins the current HEAD commit for the duration of the block: reads in
+    # the block made by the same fiber resolve against that commit instead
+    # of each looking up HEAD anew, so they see one consistent state even
+    # if a push lands meanwhile. Writes still build on the live HEAD and
+    # then move the pin to their result, so the block sees its own changes.
+    # A snapshot nested in another one keeps the outer pin.
+    def snapshot(&)
+      fiber = Fiber.current
+      return yield if @pins_lock.synchronize { @pins.has_key? fiber }
+      oid = head
+      @pins_lock.synchronize { @pins[fiber] = oid }
+      begin
+        yield
+      ensure
+        @pins_lock.synchronize { @pins.delete fiber }
+      end
+    end
+
     def read(path : String) : String
-      status, output = git ["cat-file", "blob", "HEAD:#{path}"]
+      rev = read_rev || raise Error404.new "No such file: #{path}"
+      status, output = git ["cat-file", "blob", "#{rev}:#{path}"]
       raise Error404.new "No such file: #{path}" unless status.success?
       output
     end
 
     def exists?(path : String) : Bool
-      return false unless head
-      status, _ = git ["cat-file", "-e", "HEAD:#{path}"]
+      rev = read_rev || return false
+      status, _ = git ["cat-file", "-e", "#{rev}:#{path}"]
       status.success?
     end
 
     def size(path : String) : Int64?
-      status, output = git ["cat-file", "-s", "HEAD:#{path}"]
+      rev = read_rev || return
+      status, output = git ["cat-file", "-s", "#{rev}:#{path}"]
       status.success? ? output.strip.to_i64? : nil
     end
 
     def list(prefix : String) : Array(String)
-      return [] of String unless head
-      status, output = git ["ls-tree", "-r", "--name-only", "-z", "HEAD", "--", prefix]
+      rev = read_rev || return [] of String
+      status, output = git ["ls-tree", "-r", "--name-only", "-z", rev, "--", prefix]
       return [] of String unless status.success?
       output.split('\0', remove_empty: true).sort!
     end
@@ -67,7 +93,11 @@ module Fluence
     def delete(paths : Array(String), user : Fluence::User, message : String)
       @lock.synchronize do
         retrying_conflict do
-          paths.each { |path| raise Error404.new "No such file: #{path}" unless exists? path }
+          # Checked against the live HEAD, which the commit builds on.
+          paths.each do |path|
+            status, _ = git ["cat-file", "-e", "HEAD:#{path}"]
+            raise Error404.new "No such file: #{path}" unless status.success?
+          end
           commit(user, message) do |index_env|
             paths.each { |path| index_remove path, index_env }
           end
@@ -94,8 +124,8 @@ module Fluence
     end
 
     def log(path : String, limit : Int32 = 0) : Array(Commit)
-      return [] of Commit unless head
-      status, output = git log_args(path, limit)
+      rev = read_rev || return [] of Commit
+      status, output = git log_args(path, limit, rev)
       status.success? ? parse_log(output, path) : [] of Commit
     end
 
@@ -114,21 +144,21 @@ module Fluence
     end
 
     def search(query : String, prefix : String) : Array(String)
-      return [] of String unless head
+      rev = read_rev || return [] of String
       status, output = git ["grep", "-I", "-i", "-l", "-z", "--fixed-strings",
-                            "-e", query, "HEAD", "--", prefix]
+                            "-e", query, rev, "--", prefix]
       return [] of String unless status.success?
-      output.split('\0', remove_empty: true).map &.lchop("HEAD:")
+      output.split('\0', remove_empty: true).map &.lchop("#{rev}:")
     end
 
     def headings(prefix : String) : Hash(String, String)
       ret = {} of String => String
-      return ret unless head
+      rev = read_rev || return ret
       # -z prints the path verbatim (non-ASCII names are not quoted), NUL-terminated.
-      status, output = git ["grep", "-I", "-m1", "-z", "-e", "^# ", "HEAD", "--", prefix]
+      status, output = git ["grep", "-I", "-m1", "-z", "-e", "^# ", rev, "--", prefix]
       return ret unless status.success?
       output.each_line do |line|
-        path, sep, text = line.lchop("HEAD:").partition('\0')
+        path, sep, text = line.lchop("#{rev}:").partition('\0')
         heading = text.lchop("# ").strip
         next if sep.empty? || heading.empty?
         ret[path] = heading
@@ -154,9 +184,24 @@ module Fluence
       output
     end
 
+    # The live HEAD commit; nil while HEAD is unborn.
     private def head : String?
       status, output = git ["rev-parse", "--verify", "--quiet", "HEAD"]
       status.success? ? output.strip : nil
+    end
+
+    # The revision reads resolve against: the commit `#snapshot` pinned for
+    # the current fiber, otherwise "HEAD" (left to git to resolve). nil when
+    # the pinned HEAD was unborn, i.e. there is nothing to read.
+    private def read_rev : String?
+      fiber = Fiber.current
+      @pins_lock.synchronize { @pins.has_key?(fiber) ? @pins[fiber] : "HEAD" }
+    end
+
+    # Moves the current fiber's pin, if it has one, to *oid*.
+    private def repin(oid : String?)
+      fiber = Fiber.current
+      @pins_lock.synchronize { @pins[fiber] = oid if @pins.has_key? fiber }
     end
 
     # Removes *path* from the temporary index. `update-index --force-remove`
@@ -193,7 +238,8 @@ module Fluence
 
         tree = git!(["write-tree"], env: index_env).strip
         if base && tree == git!(["rev-parse", "#{base}^{tree}"]).strip
-          return # nothing changed
+          repin base # nothing changed, but the live HEAD may be newer
+          return
         end
 
         args = ["commit-tree", tree, "-m", message]
@@ -204,6 +250,7 @@ module Fluence
         # exist yet, so an unborn HEAD is a compare-and-swap too.
         status, _ = git ["update-ref", "HEAD", new_commit, base || ZERO_OID]
         raise Error409.new unless status.success?
+        repin new_commit
       ensure
         ::File.delete? index_file
       end
