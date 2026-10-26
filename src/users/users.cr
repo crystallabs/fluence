@@ -1,9 +1,9 @@
 require "./user"
 
 # The class `Users` handles a list of `User`, with add, remove, update, and find operation.
-# An instance of `Users` must be linked with a file which can be read of updated
-#
-# TODO: Mutex on add/remove/update
+# An instance of `Users` must be linked with a file which can be read of updated.
+# The file holds password hashes and login tokens, so it is readable and
+# writable by its owner only.
 class Fluence::Users < Lockable
   class AlreadyExists < Exception
   end
@@ -19,8 +19,8 @@ class Fluence::Users < Lockable
 
   def initialize(@file, @default : User? = nil)
     @list = {} of String => User
-    # TODO: set UNIX permissions
     ::File.touch(@file)
+    ::File.chmod(@file, 0o600)
   end
 
   # Reads the users from the file, discarding in-memory modifications.
@@ -40,7 +40,7 @@ class Fluence::Users < Lockable
 
   # save the users into the file
   def save!
-    ::File.write @file, to_yaml
+    ::File.write @file, to_yaml, perm: 0o600
   end
 
   # add a user to the list

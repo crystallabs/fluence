@@ -62,6 +62,19 @@ describe Fluence::Users do
     reloaded = Fluence::Users.new(file).load!
     reloaded.list.keys.should eq %w[alice bob carol]
   end
+
+  it "keeps the file readable by its owner only" do
+    file = File.tempname("fluence-spec-users")
+    File.write file, "", perm: 0o644
+    users = Fluence::Users.new file
+    (File.info(file).permissions.value & 0o777).should eq 0o600
+    users.transaction! &.add(Fluence::User.new("alice", "pw"))
+    (File.info(file).permissions.value & 0o777).should eq 0o600
+
+    fresh = File.tempname("fluence-spec-users")
+    Fluence::Users.new fresh
+    (File.info(fresh).permissions.value & 0o777).should eq 0o600
+  end
 end
 
 describe Fluence::User do
