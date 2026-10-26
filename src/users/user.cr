@@ -22,8 +22,12 @@ class Fluence::User
   # User.new "admin", "password", %w(admin user)
   # User.new "regular", "password", %w(user guest)
   # ```
+  # Accepted user names. The anchors are \\A and \\z on purpose: ^ and $
+  # would also accept a name followed by a newline.
+  NAME = /\A[A-Za-z0-9 _.-]+\z/
+
   def initialize(@name, @password, @groups = [] of String, @token : String? = nil)
-    raise "Invalid name #{@name}" if @name !~ /^[A-Za-z0-9 _.-]+$/ # Security: Avoid escaping and injection of code
+    raise "Invalid name #{@name}" unless @name.matches? NAME # Security: Avoid escaping and injection of code
   end
 
   # Encrypts the password using `Crypto::Bcrypt`.

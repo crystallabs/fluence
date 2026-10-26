@@ -48,3 +48,10 @@ describe Fluence::Users do
     reloaded["bob"]?.should be_nil
   end
 end
+
+describe Fluence::User do
+  it "rejects names with a trailing newline" do
+    expect_raises(Exception, /Invalid name/) { Fluence::User.new "admin\n", "password" }
+    Fluence::User.new("admin", "password").name.should eq "admin"
+  end
+end
