@@ -88,13 +88,22 @@ class GitController < ApplicationController
   end
 
   # The wiki user of this request: the Basic auth credentials when present
-  # (nil if invalid), the guest user otherwise.
+  # (nil if invalid, or throttled after too many failures — see
+  # `Fluence::LoginThrottle`), the guest user otherwise.
   private def git_user : Fluence::User?
     authorization = request.headers["Authorization"]?
     return Fluence::USERS.default unless authorization
     return unless authorization.starts_with? "Basic "
     name, _, password = Base64.decode_string(authorization.lchop("Basic ")).partition(':')
-    Fluence::USERS.auth? name, password
+    address = request.remote_address
+    return if Fluence::LOGIN_THROTTLE.blocked?(address, name)
+    user = Fluence::USERS.auth? name, password
+    if user
+      Fluence::LOGIN_THROTTLE.success!(address, name)
+    else
+      Fluence::LOGIN_THROTTLE.failure!(address, name)
+    end
+    user
   rescue Base64::Error
     nil
   end

@@ -136,6 +136,47 @@ describe "password change" do
   end
 end
 
+describe "login throttling" do
+  it "rejects logins and git credentials after too many failures" do
+    throttle = Fluence::LOGIN_THROTTLE
+    limit, window = throttle.limit, throttle.window
+    throttle.clear
+    throttle.limit, throttle.window = 3, 3.seconds
+    begin
+      SpecClient.login "throttled", "sekrit123"
+      SpecClient.login "bystander", "sekrit123"
+      attacker = SpecClient.new
+      attacker.remote_address = Socket::IPAddress.new("192.0.2.7", 40000)
+      3.times do
+        attacker.post("/users/login", {"username" => "throttled", "password" => "wrong"}).status_code.should eq 302
+      end
+
+      # Even the right password is refused now, for this username...
+      response = attacker.post "/users/login", {"username" => "throttled", "password" => "sekrit123"}
+      response.status_code.should eq 429
+      response.body.should contain "Too many failed login attempts."
+      attacker.jar["user.token"]?.should be_nil
+
+      elsewhere = SpecClient.new
+      elsewhere.remote_address = Socket::IPAddress.new("198.51.100.1", 40000)
+      elsewhere.post("/users/login", {"username" => "throttled", "password" => "sekrit123"}).status_code.should eq 429
+      git = SpecClient.new.get "/repo/info/refs?service=git-upload-pack", basic_auth("throttled:sekrit123")
+      git.status_code.should eq 401
+
+      # ...and for any username from this address.
+      attacker.post("/users/login", {"username" => "bystander", "password" => "sekrit123"}).status_code.should eq 429
+      elsewhere.post("/users/login", {"username" => "bystander", "password" => "sekrit123"}).status_code.should eq 302
+
+      sleep 3100.milliseconds
+      attacker.post("/users/login", {"username" => "throttled", "password" => "sekrit123"}).status_code.should eq 302
+      attacker.jar["user.token"]?.should_not be_nil
+    ensure
+      throttle.limit, throttle.window = limit, window
+      throttle.clear
+    end
+  end
+end
+
 describe "rename destination check over HTTP" do
   it "reports an invalid destination name instead of failing" do
     with_each_storage do |_, _|

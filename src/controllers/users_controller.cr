@@ -8,7 +8,20 @@ class UsersController < ApplicationController
   # post /users/login
   def login_validates
     acl_permit! :write
-    user = Fluence::USERS.auth! params.body["username"].to_s, params.body["password"].to_s
+    name = params.body["username"].to_s
+    address = request.remote_address
+    if Fluence::LOGIN_THROTTLE.blocked?(address, name)
+      flash["danger"] = "Too many failed login attempts. Please try again later."
+      @env.response.status_code = 429
+      @env.response.headers["Retry-After"] = Fluence::LOGIN_THROTTLE.window.total_seconds.ceil.to_i.to_s
+      return render "login.slang"
+    end
+    user = Fluence::USERS.auth! name, params.body["password"].to_s
+    if user
+      Fluence::LOGIN_THROTTLE.success!(address, name)
+    else
+      Fluence::LOGIN_THROTTLE.failure!(address, name)
+    end
     # TODO: make a notification
     if user.nil?
       flash["danger"] = "User or password doesn't match."

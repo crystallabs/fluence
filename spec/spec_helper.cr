@@ -69,8 +69,12 @@ class SpecClient
 
   getter jar = HTTP::Cookies.new
 
+  # The client's address as the server sees it (nil by default).
+  property remote_address : Socket::Address?
+
   def request(method : String, path : String, headers = HTTP::Headers.new, body : String? = nil) : HTTP::Client::Response
     request = HTTP::Request.new(method, path, headers, body)
+    request.remote_address = remote_address
     jar.add_request_headers request.headers
     io = IO::Memory.new
     response = HTTP::Server::Response.new(io)
