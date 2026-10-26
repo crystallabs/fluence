@@ -65,6 +65,8 @@ There are no files or directories required to pre-exist for Fluence to work. The
 
 Static assets (stylesheets, scripts, logo) are served from the `public/` directory of the source tree Fluence was compiled from, so the binary can be started from any working directory. If that tree is not available at runtime, point `FLUENCE_PUBLICDIR` at a copy of `public/`.
 
+Attachment uploads are limited to 32 MB per request (`FLUENCE_MAX_UPLOAD`, in bytes) and other request bodies, such as page saves, to 8 MB (`FLUENCE_MAX_PAGE_SIZE`); larger requests are refused with 413.
+
 There is no index or cache: listings, titles, internal-link resolution, and search always operate on the current repository contents, so nothing can go out of sync.
 
 Page content is GitHub Flavored Markdown (tables, strikethrough, autolinks, emoji). Raw HTML in pages is not rendered, and attachments other than images, plain text, PDF, audio, and video are offered for download rather than displayed, so that no page or upload can run script in readers' browsers. Every form and script request of the wiki carries a per-session CSRF token, and POST requests without it are refused with 403, so other sites cannot make a logged-in browser change the wiki; the git routes under `/repo`, authenticated with HTTP Basic rather than cookies, are exempt. Links between pages are ordinary markdown links — `[Title](/pages/name)`, or a target relative to the current page such as `[Title](sibling)`. To convert content written with the `[[wikilink]]` syntax to standard links, start Fluence once with `FLUENCE_MIGRATE_WIKILINKS=1` — it rewrites all affected pages, commits them, and exits.

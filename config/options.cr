@@ -64,6 +64,16 @@ module Fluence
       # off by default because the default setup is plain HTTP.
       @secure_cookies = !ENV["FLUENCE_SECURE_COOKIES"]?.nil?
 
+      # Largest accepted attachment upload, in bytes (the whole multipart
+      # request body). Larger uploads are refused with 413. Override with
+      # FLUENCE_MAX_UPLOAD.
+      @max_upload_size = ENV.fetch("FLUENCE_MAX_UPLOAD", (32 * 1024 * 1024).to_s).to_i64
+
+      # Largest accepted body of other requests (page saves and other
+      # forms), in bytes; Kemal refuses larger ones with 413. Override with
+      # FLUENCE_MAX_PAGE_SIZE.
+      @max_page_size = ENV.fetch("FLUENCE_MAX_PAGE_SIZE", (8 * 1024 * 1024).to_s).to_i32
+
       # Do all, or only new, and/or only empty pages, open in edit mode by default?
       # By default, only new pages open in edit mode; existing and empty pages open in view mode.
       @open_in_edit = false
@@ -96,6 +106,8 @@ module Fluence
     getter repo_prefix : String
     getter secure_cookies : Bool
     property registration : String
+    property max_upload_size : Int64
+    getter max_page_size : Int32
 
     def registration_open?
       @registration != "closed"

@@ -21,6 +21,8 @@ require "./**"
 Kemal.config.host_binding = Fluence::OPTIONS.host
 Kemal.config.port = Fluence::OPTIONS.port
 Kemal.config.public_folder = Fluence::OPTIONS.publicdir
+# Attachment uploads are limited separately, by MediaController#upload.
+Kemal.config.max_request_body_size = Fluence::OPTIONS.max_page_size
 
 module Fluence
   Dir.mkdir_p Fluence::OPTIONS.metadir

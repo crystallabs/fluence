@@ -356,6 +356,39 @@ describe "media upload over HTTP" do
       Fluence::Media.new("home/hello.txt").read.should eq "hello world"
     end
   end
+
+  it "refuses uploads over the size limit, by Content-Length or while reading" do
+    with_each_storage do |storage, _|
+      client = SpecClient.login "editor", "sekrit123"
+      headers, body = multipart_upload "home", "big.txt", "x" * 1000
+      saved_limit = Fluence::OPTIONS.max_upload_size
+      Fluence::OPTIONS.max_upload_size = body.bytesize.to_i64 - 1
+      begin
+        declared = headers.dup
+        declared["Content-Length"] = body.bytesize.to_s
+        # Without a Content-Length (as when chunked), the body is cut off
+        # once one byte too many has been read.
+        {declared, headers}.each do |request_headers|
+          response = client.post "/media/upload", request_headers, body
+          response.status_code.should eq 413
+          response.headers["Content-Type"].should eq "application/json"
+          JSON.parse(response.body)["success"].as_bool.should be_false
+          JSON.parse(response.body)["error"].as_s.should contain "larger than the limit"
+        end
+        Fluence::Media.new("home/big.txt").exists?.should be_false
+        storage.list("media").should be_empty
+        git_log(storage).should_not contain "Upload media"
+
+        Fluence::OPTIONS.max_upload_size = body.bytesize.to_i64
+        {declared, headers}.each do |request_headers|
+          client.post("/media/upload", request_headers, body).body.should contain %("success":true)
+        end
+        Fluence::Media.new("home/big.txt").read.should eq "x" * 1000
+      ensure
+        Fluence::OPTIONS.max_upload_size = saved_limit
+      end
+    end
+  end
 end
 
 describe "registration and admin defaults" do

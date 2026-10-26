@@ -121,15 +121,53 @@ class MediaController < ApplicationController
   #
   # Multipart body with a "pagename" field (the page the attachment belongs
   # to) followed by a "file" part. Returns JSON: {success, name, url} or
-  # {success, error}.
+  # {success, error}. Bodies larger than `Fluence::Options#max_upload_size`
+  # are refused with 413: up front when the Content-Length says so, else
+  # once that much has been read. The file is stored only after the whole
+  # body has been received, so a refused upload leaves nothing behind.
   def upload
     @env.response.content_type = "application/json"
-    pagename = ""
-    saved = nil
-    error = nil
+    limit = Fluence::OPTIONS.max_upload_size
+    if (length = request.headers["Content-Length"]?.try(&.to_i64?)) && length > limit
+      return upload_too_large
+    end
+    boundary = request.headers["Content-Type"]?.try { |type| MIME::Multipart.parse_boundary type }
+    body = request.body
+    unless boundary && body
+      return {success: false, error: "The upload is not a multipart form."}.to_json
+    end
 
     uses_login_cookies
-    HTTP::FormData.parse(@env.request) do |part|
+    tempfile = ::File.tempfile("fluence-upload")
+    begin
+      body = Fluence::LimitedIO.new(body, limit)
+      media, error = receive_upload body, boundary, tempfile
+      body.skip_to_end # the epilogue counts towards the limit too
+      error ||= store_upload media, tempfile.rewind if media
+    ensure
+      tempfile.close
+      tempfile.delete
+    end
+
+    if error
+      {success: false, error: error}.to_json
+    elsif media
+      {success: true, name: media.title, url: media.url}.to_json
+    else
+      {success: false, error: "No file was uploaded."}.to_json
+    end
+  rescue Fluence::LimitedIO::TooLarge
+    upload_too_large
+  end
+
+  # Reads the parts of an upload, copying the (first) file into
+  # *tempfile*: the attachment it is to be stored as, or the error that
+  # prevents it.
+  private def receive_upload(body : IO, boundary : String, tempfile : IO) : {Fluence::Media?, String?}
+    pagename = ""
+    media = nil
+    error = nil
+    HTTP::FormData.parse(body, boundary) do |part|
       case part.name
       when "pagename"
         # The page's canonical name and URL are what the permission and
@@ -145,7 +183,7 @@ class MediaController < ApplicationController
           error = "You are not permitted to access this resource (#{page.url}, write)."
         end
       when "file"
-        next if error
+        next if error || media
         filename = Fluence::Media.sanitize(part.filename.to_s).strip "/"
         if pagename.empty? || filename.empty?
           error = "Upload is missing the page name or file name."
@@ -153,20 +191,26 @@ class MediaController < ApplicationController
         end
         begin
           media = Fluence::Media.new "#{pagename}/#{filename}"
-          media.write current_user, part.body
-          saved = media
-        rescue e : Fluence::Error403 | Fluence::Error409
+          IO.copy part.body, tempfile
+        rescue e : Fluence::Error403
           error = e.message
         end
       end
     end
+    error ? {nil, error} : {media, nil}
+  end
 
-    if error
-      {success: false, error: error}.to_json
-    elsif media = saved
-      {success: true, name: media.title, url: media.url}.to_json
-    else
-      {success: false, error: "No file was uploaded."}.to_json
-    end
+  # Commits the received file; the error message if that fails.
+  private def store_upload(media : Fluence::Media, content : IO) : String?
+    media.write current_user, content
+    nil
+  rescue e : Fluence::Error403 | Fluence::Error409
+    e.message
+  end
+
+  private def upload_too_large : String
+    @env.response.status_code = 413
+    limit = Fluence::OPTIONS.max_upload_size
+    {success: false, error: "The upload is larger than the limit of #{limit.humanize_bytes}."}.to_json
   end
 end
