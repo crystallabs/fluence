@@ -1,3 +1,5 @@
+require "markd"
+
 class Fluence::Page < Fluence::File
   module TableOfContent
     alias TocLine = {Int32, String}
@@ -30,15 +32,18 @@ class Fluence::Page < Fluence::File
       toc.map { |_, text| anchors.next text }
     end
 
-    # Builds the table of contents from markdown *content*, skipping
-    # code (see `Page::Lines`).
+    # Builds the table of contents from markdown *content*: every heading
+    # markd recognizes (ATX and setext, also inside lists and quotes, never
+    # inside code), in document order, with the plain text its rendered id
+    # is computed from (`Fluence::Markdown.plain_text`). So `anchors` of
+    # the result are exactly the ids of the rendered headings.
     def self.toc(content : String) : Toc
       toc = Toc.new
-      Page::Lines.each(content) do |line, code|
-        next if code
-        if toc_line = get_toc_line line.chomp
-          toc << toc_line
-        end
+      walker = Markd::Parser.parse(content, Fluence::Markdown::MARKD_OPTIONS).walker
+      while event = walker.next
+        node, entering = event
+        next unless entering && node.type.heading?
+        toc << {node.data["level"].as(Int32), Fluence::Markdown.plain_text(node)}
       end
       toc
     end
@@ -47,15 +52,6 @@ class Fluence::Page < Fluence::File
     # heading, so a "# " line inside code never counts. Nil if none.
     def self.title(toc : Toc) : String?
       toc.find(&.[0].==(1)).try &.[1].strip.presence
-    end
-
-    # Parse a markdown line, and return a TocLine if it is a title
-    def self.get_toc_line(line : String) : TocLine?
-      if match = line.match /^(\#{1,6})\s(.+)/
-        title_num = match[1].size
-        title = match[2]
-        {title_num, title}
-      end
     end
   end
 end

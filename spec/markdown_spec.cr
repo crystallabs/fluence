@@ -39,6 +39,21 @@ describe Fluence::Markdown do
     Fluence::Page::TableOfContent.anchors(toc).should eq ["notes", "notes-1", "notes-1-1", "notes-2"]
   end
 
+  it "builds the TOC from the headings markd renders, with matching ids" do
+    {
+      "Title\n=====\n\nSub\n---\n"                      => [{1, "Title"}, {2, "Sub"}],
+      "## **Bold** and `code` text\n"                   => [{2, "Bold and code text"}],
+      "> ## Quoted\n\n- ### In a list\n"                => [{2, "Quoted"}, {3, "In a list"}],
+      "   ## Indented ##\n```\n# comment\n```\n"        => [{2, "Indented"}],
+      "# Notes\nNotes\n---\n> ## Notes\n## *Notes* 1\n" => [{1, "Notes"}, {2, "Notes"}, {2, "Notes"}, {2, "Notes 1"}],
+    }.each do |content, expected|
+      toc = Fluence::Page::TableOfContent.toc(content)
+      toc.should eq expected
+      ids = Fluence::Markdown.to_html(content).scan(/<h[1-6] id="([^"]*)">/).map(&.[1])
+      Fluence::Page::TableOfContent.anchors(toc).should eq ids
+    end
+  end
+
   it "does not treat code block content as headings" do
     Fluence::Markdown.to_html("```\n# not a heading\n```\n").should_not contain "<h1"
   end

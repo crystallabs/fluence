@@ -46,6 +46,9 @@ describe Fluence::Page do
 
       page.update! SPEC_USER, "```\n# only in code\n```\n"
       page.title.should eq "script"
+
+      page.update! SPEC_USER, "Setext *Title*\n===\n"
+      page.title.should eq "Setext Title"
     end
   end
 end

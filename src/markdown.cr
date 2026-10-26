@@ -23,20 +23,24 @@ struct Fluence::Markdown
       tag_name = HEADINGS[node.data["level"].as(Int32) - 1]
       if entering
         newline
-        tag(tag_name, {"id" => @anchors.next(plain_text(node))})
+        tag(tag_name, {"id" => @anchors.next(Markdown.plain_text(node))})
       else
         tag(tag_name, end_tag: true)
         newline
       end
     end
+  end
 
-    private def plain_text(node : Markd::Node) : String
-      String.build do |io|
-        walker = node.walker
-        while event = walker.next
-          child, entering = event
-          io << child.text if entering
-        end
+  # The text of *node* without markup: the literal text of every node
+  # below it, concatenated ("## **Bold** text" -> "Bold text"). Heading
+  # ids and the table of contents (`Page::TableOfContent.toc`) both use
+  # it, so they agree on every heading.
+  def self.plain_text(node : Markd::Node) : String
+    String.build do |io|
+      walker = node.walker
+      while event = walker.next
+        child, entering = event
+        io << child.text if entering
       end
     end
   end
