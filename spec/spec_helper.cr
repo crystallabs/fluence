@@ -14,7 +14,7 @@ Kemal.config.logging = false
 # In the test environment Kemal.run sets everything up without listening.
 require "../src/fluence"
 
-SPEC_USER = Fluence::User.new "spec", "password", %w(user)
+SPEC_USER = Fluence::User.new "spec", "password", %w[user]
 
 # Password hashing dominates the suite's run time at the default cost.
 Fluence::User.bcrypt_cost = Crypto::Bcrypt::COST_RANGE.begin

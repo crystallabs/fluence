@@ -1,5 +1,5 @@
 # Remaining exclusions are deliberate: UselessAssign (controller locals are read by slang templates), WhitespaceAroundMacroExpression (macro style),
-# AccessorMethodName/BinaryOperatorParameterName/QueryBoolMethods (names are the intended API), PercentLiteralDelimiters (spec_helper.cr, owned elsewhere).
+# AccessorMethodName/BinaryOperatorParameterName/QueryBoolMethods (names are the intended API).
 
 Version: "1.7.0"
 
@@ -29,6 +29,3 @@ Naming/QueryBoolMethods:
   Excluded:
   - config/options.cr
 
-Style/PercentLiteralDelimiters:
-  Excluded:
-  - spec/spec_helper.cr
