@@ -72,7 +72,20 @@ class SpecClient
   # The client's address as the server sees it (nil by default).
   property remote_address : Socket::Address?
 
-  def request(method : String, path : String, headers = HTTP::Headers.new, body : String? = nil) : HTTP::Client::Response
+  # The CSRF token last seen in a page (see `Fluence::CSRF`), and the
+  # session cookie it belongs to: logging in or out starts a new session,
+  # whose token is fetched afresh.
+  @csrf_token : String?
+  @csrf_session : String?
+
+  # Sends a request. POSTs carry the session's CSRF token in the header
+  # the fetch calls of base.js use, unless *csrf* is false (or the request
+  # goes to the git routes, which take none).
+  def request(method : String, path : String, headers = HTTP::Headers.new, body : String? = nil, csrf = true) : HTTP::Client::Response
+    if csrf && method == "POST" && !path.starts_with?(Fluence::OPTIONS.repo_prefix) && !headers.has_key?(Fluence::CSRF::HEADER)
+      headers = headers.dup
+      headers[Fluence::CSRF::HEADER] = csrf_token
+    end
     request = HTTP::Request.new(method, path, headers, body)
     request.remote_address = remote_address
     jar.add_request_headers request.headers
@@ -89,6 +102,7 @@ class SpecClient
         jar << cookie
       end
     end
+    remember_csrf_token client_response.body
     client_response
   end
 
@@ -96,13 +110,41 @@ class SpecClient
     request "GET", path, headers
   end
 
-  def post(path : String, form : Hash(String, String)) : HTTP::Client::Response
+  # Posts a form like a browser does, with the CSRF token in its hidden
+  # `authenticity_token` field (left out when *csrf* is false).
+  def post(path : String, form : Hash(String, String), csrf = true) : HTTP::Client::Response
     headers = HTTP::Headers{"Content-Type" => "application/x-www-form-urlencoded"}
-    request "POST", path, headers, URI::Params.encode(form)
+    form = form.merge({Fluence::CSRF::PARAMETER => csrf_token}) if csrf
+    request "POST", path, headers, URI::Params.encode(form), csrf: false
   end
 
-  def post(path : String, headers : HTTP::Headers, body : String) : HTTP::Client::Response
-    request "POST", path, headers, body
+  def post(path : String, headers : HTTP::Headers, body : String, csrf = true) : HTTP::Client::Response
+    request "POST", path, headers, body, csrf: csrf
+  end
+
+  # The token of the current session: the one last seen in a page, else
+  # one read from a page with forms — the settings page when logged in,
+  # the login page otherwise.
+  def csrf_token : String
+    if (token = @csrf_token) && @csrf_session == session_cookie
+      return token
+    end
+    @csrf_token = nil
+    if get("#{Fluence::OPTIONS.users_prefix}/settings").status_code != 200
+      get "#{Fluence::OPTIONS.users_prefix}/login"
+    end
+    @csrf_token || raise "no CSRF token found in the settings or login page"
+  end
+
+  private def session_cookie : String?
+    jar[Kemal::Session.config.cookie_name]?.try &.value
+  end
+
+  private def remember_csrf_token(body : String)
+    if match = body.match(/<meta name="csrf-token" content="([^"]+)"/)
+      @csrf_token = match[1]
+      @csrf_session = session_cookie
+    end
   end
 
   # A client registered (first time only) and logged in over HTTP. The

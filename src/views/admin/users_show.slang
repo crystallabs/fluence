@@ -4,6 +4,7 @@
       h1 User Management
       h3 Create a new user
       form#register-new-user method="post" action="#{Fluence::OPTIONS.admin_prefix}/users/create"
+        input type="hidden" name="authenticity_token" value=csrf_token
         fieldset
           .mb-3.row
             label.col-3.col-form-label for="input_username" Username
@@ -37,9 +38,11 @@
               td = user.groups.join(", ")
               td.text-end
                 form.d-inline-flex.gap-1.me-2 method="post" action="#{Fluence::OPTIONS.admin_prefix}/users/password"
+                  input type="hidden" name="authenticity_token" value=csrf_token
                   input type="hidden" name="username" value=user.name
                   input.form-control.form-control-sm type="password" name="password" required="required" autocomplete="new-password" placeholder="New password" aria-label="New password for #{user.name}"
                   button.btn.btn-sm.btn-warning.text-nowrap name="reset" type="submit" Reset password
                 form.d-inline method="post" action="#{Fluence::OPTIONS.admin_prefix}/users/delete" onsubmit="return confirm('Really delete user `#{user.name}`?')"
+                  input type="hidden" name="authenticity_token" value=csrf_token
                   input type="hidden" name="username" value=user.name
                   button.btn.btn-sm.btn-danger name="delete" type="submit" Delete

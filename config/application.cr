@@ -31,3 +31,8 @@ before_all do |env|
   env.response.headers["X-Frame-Options"] = "DENY"
   env.response.headers["Content-Security-Policy"] = "frame-ancestors 'none'"
 end
+
+# Every state-changing request must carry the session's CSRF token (see
+# `Fluence::CSRF`); forms include it as a hidden field, base.js sends it
+# in a header.
+use Fluence::CSRF.new

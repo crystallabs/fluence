@@ -10,6 +10,8 @@ html lang="en" data-bs-theme=theme_attr
     meta charset="utf-8"
     meta http-equiv="X-UA-Compatible" content="IE=edge"
     meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    - if token = csrf_meta_token
+      meta name="csrf-token" content=token
 
     link rel="stylesheet" href="/assets/stylesheet/bootstrap.min.css"
     script src="/assets/javascript/bootstrap.bundle.min.js"

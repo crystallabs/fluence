@@ -14,6 +14,14 @@ var Fluence = {
 	}
 };
 
+// Headers of the POST requests made over fetch: a JSON answer is asked
+// for, and the session's CSRF token (from the layout's csrf-token meta
+// tag, see Fluence::CSRF) is sent along, as forms do in a hidden field.
+Fluence.postHeaders = function() {
+	var meta = document.querySelector('meta[name="csrf-token"]');
+	return { "Accept": "application/json", "X-CSRF-Token": meta ? meta.content : "" };
+}
+
 // The EasyMDE instance of the page editor, once initialized.
 var editor;
 
@@ -79,7 +87,7 @@ Fluence.editor.saveAndContinue = function(form) {
 	status.textContent = "Saving…";
 	fetch(form.action, {
 		method: "POST",
-		headers: { "Accept": "application/json" },
+		headers: Fluence.postHeaders(),
 		body: new URLSearchParams({ "body": editor.value(), "summary": summary.value, "continue": "1" })
 	})
 		.then(function(response) { return response.json(); })
@@ -169,7 +177,7 @@ Fluence.deleteAttachment = function(button, name) {
 	var row = button.closest("li");
 	fetch(button.formAction, {
 		method: "POST",
-		headers: { "Accept": "application/json" },
+		headers: Fluence.postHeaders(),
 		body: new URLSearchParams({ "delete": "Delete", "media-name": name })
 	})
 		.then(function(response) { return response.json(); })
@@ -196,7 +204,7 @@ Fluence.upload = function(form) {
 		var data = new FormData();
 		data.append("pagename", form.dataset.pagename);
 		data.append("file", file, file.name);
-		fetch(form.action, { method: "POST", body: data })
+		fetch(form.action, { method: "POST", headers: Fluence.postHeaders(), body: data })
 			.then(function(response) { return response.json(); })
 			.then(function(result) {
 				if (result.success)

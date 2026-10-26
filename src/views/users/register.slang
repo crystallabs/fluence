@@ -3,6 +3,7 @@
     .container.col-md-6.col-lg-4
       h2.page-header Register
       form#register method="post"
+        input type="hidden" name="authenticity_token" value=csrf_token
         fieldset
           .mb-3.row
             label.col-4.col-form-label for="input_username" Username

@@ -11,6 +11,7 @@
               | The editor shows an unsaved draft of this page from an earlier visit. Save it, or
               button.btn.btn-sm.btn-outline-secondary.ms-2 type="button" onclick="Fluence.editor.discardDraft()" Discard draft
             form#edit-page.invisible method="post"
+              input type="hidden" name="authenticity_token" value=csrf_token
               fieldset
                 textarea.form-control name="body" = body
           - else
@@ -19,6 +20,8 @@
         .col-6
           h6.section-title.mt-3 New Attachment
           - if writable
+            / Submitted by Fluence.upload over fetch, which sends the CSRF
+            / token in a header (multipart bodies are not searched for it).
             form#upload action="#{Fluence::OPTIONS.media_prefix}/upload" method="post" enctype="multipart/form-data" data-pagename="#{page.name}" onsubmit="return Fluence.upload(this)"
               input.form-control.form-control-sm.my-1 type="file" name="file" multiple="multiple" required="required"
               button.btn.btn-sm.btn-primary type="submit" Upload
@@ -29,6 +32,8 @@
           / Directory entries (attachments of subpages) carry no entry and are skipped.
           - attachments = media.children1.values.compact_map(&.[1])
           form#manage-attachments method="post"
+            - if writable
+              input type="hidden" name="authenticity_token" value=csrf_token
             / Shown while the list is empty; uploads made on the page hide it.
             - if attachments.empty?
               .small.text-body-secondary#no-attachments None.
@@ -83,6 +88,7 @@
               a.section-toggle.collapsed data-bs-toggle="collapse" href="#page-management-body" role="button" aria-expanded="false" aria-controls="page-management-body" Page Management
             #page-management-body.collapse
               form#manage-page method="post"
+                input type="hidden" name="authenticity_token" value=csrf_token
                 .input-group.input-group-sm
                   span.input-group-text id="label-page-name" Page name
                   input.form-control type="text" id="input-page-name" name="input-page-name" aria-describedby="label-page-name" value="#{page.name}"

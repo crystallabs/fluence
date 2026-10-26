@@ -4,6 +4,7 @@
       h2.page-header Settings
       p.text-body-secondary = "Preferences of user '#{current_user.name}'. They apply in every browser you log in from."
       form#settings method="post"
+        input type="hidden" name="authenticity_token" value=csrf_token
         fieldset
           .mb-3.row
             label.col-5.col-form-label for="input_editor_mode" Open pages in
@@ -39,6 +40,7 @@
             input.form-control.btn.btn-md.btn-success name="save" type="submit" value="Save"
       h4.pt-3 Change password
       form#password method="post" action="#{Fluence::OPTIONS.users_prefix}/password"
+        input type="hidden" name="authenticity_token" value=csrf_token
         fieldset
           .mb-3.row
             label.col-5.col-form-label for="input_current_password" Current password

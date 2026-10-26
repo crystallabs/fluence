@@ -1052,3 +1052,72 @@ describe "response headers" do
     end
   end
 end
+
+describe "CSRF protection" do
+  it "refuses POSTs without the session's token and accepts them with it" do
+    with_each_storage do |_, _|
+      client = SpecClient.login "editor", "sekrit123"
+      client.post "/pages/guarded", {"body" => "# Guarded\n"}
+
+      response = client.post "/pages/guarded", {"body" => "# Forged\n"}, csrf: false
+      response.status_code.should eq 403
+      response.body.should contain "valid security token"
+      response = client.post "/pages/guarded", {"body" => "# Forged\n", "authenticity_token" => "wrong"}, csrf: false
+      response.status_code.should eq 403
+      headers = HTTP::Headers{"Content-Type" => "application/x-www-form-urlencoded", "Accept" => "application/json"}
+      response = client.post "/pages/guarded", headers, URI::Params.encode({"body" => "# Forged\n"}), csrf: false
+      response.status_code.should eq 403
+      response.headers["Content-Type"].should eq "application/json"
+      JSON.parse(response.body)["success"].as_bool.should be_false
+      headers, body = multipart_upload "guarded", "forged.txt", "x"
+      client.post("/media/upload", headers, body, csrf: false).status_code.should eq 403
+      Fluence::Page.new("guarded").read.should eq "# Guarded\n"
+      Fluence::Storage.current.list("media").should be_empty
+
+      # One token per session: it is not rotated, so pages opened earlier
+      # (other tabs, "Save and continue") keep working.
+      token = client.csrf_token
+      client.post("/pages/guarded", {"body" => "# One\n"}).status_code.should eq 302
+      client.post("/pages/guarded", {"body" => "# Two\n"}).status_code.should eq 302
+      client.csrf_token.should eq token
+      Fluence::Page.new("guarded").read.should eq "# Two\n"
+    end
+  end
+
+  it "puts the token into every form and the meta tag read by base.js" do
+    with_each_storage do |_, _|
+      guest = SpecClient.new
+      body = guest.get("/users/login").body
+      token = body.match!(/name="authenticity_token" value="([^"]+)"/)[1]
+      body.should contain %(<meta name="csrf-token" content="#{token}">)
+
+      # Anonymous readers of a page without forms start no session.
+      Fluence::Page.new("plain").update! SPEC_USER, "# Plain\n"
+      reader = SpecClient.new
+      reader.get("/pages/plain").body.should_not contain "csrf-token"
+
+      client = SpecClient.login "editor", "sekrit123"
+      body = client.get("/pages/plain").body
+      token = client.csrf_token
+      body.should contain %(<meta name="csrf-token" content="#{token}">)
+      forms = body.scan(/<form [^>]*method="post"[^>]*>(\s*<[^>]+>)/)
+      forms.size.should eq 5 # logout, edit, upload, attachments, page management
+      forms.count(&.[1].includes?(%(name="authenticity_token" value="#{token}"))).should eq 4
+    end
+  end
+
+  it "does not apply to the git smart-HTTP routes" do
+    with_each_storage do |_, _|
+      SpecClient.login "editor", "sekrit123"
+      client = SpecClient.new
+      client.get "/users/login" # a browser-like session, which git never has
+      headers = HTTP::Headers{"Content-Type" => "application/x-git-receive-pack-request"}
+      client.post("/repo/git-receive-pack", headers, "0000").status_code.should eq 401
+
+      headers.merge! basic_auth("seed-admin:seed-password")
+      response = client.post "/repo/git-receive-pack", headers, "0000"
+      response.status_code.should eq 200
+      response.headers["Content-Type"].should eq "application/x-git-receive-pack-result"
+    end
+  end
+end

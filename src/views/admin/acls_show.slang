@@ -4,6 +4,7 @@
       h1 ACL Management
       h3 Create a new ACL
       form#acl-create method="post" action="#{Fluence::OPTIONS.admin_prefix}/acls/create"
+        input type="hidden" name="authenticity_token" value=csrf_token
         fieldset
           .mb-3.row
             label.col-3.col-form-label for="input_group_acl" Group
@@ -46,6 +47,7 @@
                   span class="badge #{badge_class}" = perm.to_s
                 td.text-end
                   form.d-inline method="post" action="#{Fluence::OPTIONS.admin_prefix}/acls/update"
+                    input type="hidden" name="authenticity_token" value=csrf_token
                     input type="hidden" name="group" value=group.name
                     input type="hidden" name="path" value=path.to_s
                     .btn-group.btn-group-sm role="group" aria-label="Change permission"
@@ -53,6 +55,7 @@
                       button.btn.btn-outline-info type="submit" name="change" value="read" Read
                       button.btn.btn-outline-warning type="submit" name="change" value="none" None
                   form.d-inline.ms-2 method="post" action="#{Fluence::OPTIONS.admin_prefix}/acls/delete" onsubmit="return confirm('Really delete the ACL `#{group.name} :: #{path}`?')"
+                    input type="hidden" name="authenticity_token" value=csrf_token
                     input type="hidden" name="group" value=group.name
                     input type="hidden" name="path" value=path.to_s
                     button.btn.btn-sm.btn-danger type="submit" name="change" value="delete" Delete

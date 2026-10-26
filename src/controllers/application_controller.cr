@@ -29,6 +29,20 @@ class ApplicationController
     Fluence::OPTIONS.brand_info
   end
 
+  # The session's CSRF token, for the hidden `authenticity_token` field
+  # of every form (see `Fluence::CSRF`).
+  def csrf_token : String
+    Fluence::CSRF.token @env
+  end
+
+  # The token for the layout's `csrf-token` meta tag, which base.js sends
+  # with its fetch calls: present for signed-in users and whenever the
+  # page's content has a form (which issued the token), absent for
+  # anonymous readers, so that no session is started just for them.
+  def csrf_meta_token : String?
+    user_signed_in? ? csrf_token : session.string?(Fluence::CSRF::SESSION_KEY)
+  end
+
   # CSS classes of a navbar link: the link to the current page is active.
   def nav_link_class(href : String) : String
     request.path == href ? "nav-link active" : "nav-link"

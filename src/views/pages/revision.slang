@@ -14,6 +14,7 @@
           a.btn.btn-sm.btn-outline-secondary href="#{page.url}?diff=#{commit.oid}" Show changes
           - if writable
             form.d-inline.ms-1 method="post" action="#{page.url}" onsubmit="return confirm('Replace the current content of `#{page.name}` with this revision?')"
+              input type="hidden" name="authenticity_token" value=csrf_token
               textarea.d-none name="body" = body
               input type="hidden" name="summary" value="Restore revision #{commit.short_oid}"
               button.btn.btn-sm.btn-warning type="submit" Restore this revision
