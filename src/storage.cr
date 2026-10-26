@@ -127,6 +127,7 @@ module Fluence
 
     # Returns a map of path => first level-1 markdown heading ("# ..." line,
     # without the marker) for files under *prefix* that have one.
+    # A plain line scan: unlike `Page#title`, it does not skip code blocks.
     abstract def headings(prefix : String) : Hash(String, String)
 
     # The directory to hand to git commands that take a repository argument

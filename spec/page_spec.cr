@@ -36,6 +36,18 @@ describe Fluence::Page do
       page.size.should be > 0
     end
   end
+
+  it "takes the title from the first level-1 heading outside code" do
+    with_each_storage do
+      page = Fluence::Page.new("script")
+      page.update! SPEC_USER, "```sh\n# comment\n```\n    # indented\n## Intro\n# Real Title\n"
+      page.title.should eq "Real Title"
+      page.slug.should eq "real-title"
+
+      page.update! SPEC_USER, "```\n# only in code\n```\n"
+      page.title.should eq "script"
+    end
+  end
 end
 
 describe Fluence::Page do

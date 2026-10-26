@@ -16,6 +16,12 @@ class Fluence::Page < Fluence::File
       toc
     end
 
+    # The page title a table of contents implies: its first level-1
+    # heading, so a "# " line inside code never counts. Nil if none.
+    def self.title(toc : Toc) : String?
+      toc.find(&.[0].==(1)).try &.[1].strip.presence
+    end
+
     # Parse a markdown line, and return a TocLine if it is a title
     def self.get_toc_line(line : String) : TocLine?
       if match = line.match /^(\#{1,6})\s(.+)/

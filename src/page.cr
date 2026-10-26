@@ -63,10 +63,9 @@ class Fluence::Page < Fluence::File
   # Re-derives title, table of contents, and internal links from content.
   def process!
     content = exists? ? read : ""
-    heading = content.each_line.find(&.starts_with?("# "))
-    @title = heading ? heading.lchop("# ").strip : ::File.basename(@name)
-    @slug = Page.title_to_slug @title
     @toc = Page::TableOfContent.toc content
+    @title = Page::TableOfContent.title(@toc) || ::File.basename(@name)
+    @slug = Page.title_to_slug @title
     @intlinks = Page::InternalLinks.links_in_content content, @name
     self
   end
