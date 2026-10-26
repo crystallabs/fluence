@@ -37,7 +37,7 @@ Router.get "#{Fluence::OPTIONS.users_prefix}/login", UsersController, :login
 Router.post "#{Fluence::OPTIONS.users_prefix}/login", UsersController, :login_validates
 Router.get "#{Fluence::OPTIONS.users_prefix}/register", UsersController, :register
 Router.post "#{Fluence::OPTIONS.users_prefix}/register", UsersController, :register_validates
-Router.get "#{Fluence::OPTIONS.users_prefix}/logout", UsersController, :logout
+Router.post "#{Fluence::OPTIONS.users_prefix}/logout", UsersController, :logout
 Router.get "#{Fluence::OPTIONS.users_prefix}/settings", UsersController, :settings
 Router.post "#{Fluence::OPTIONS.users_prefix}/settings", UsersController, :settings_update
 Router.post "#{Fluence::OPTIONS.users_prefix}/password", UsersController, :password_update

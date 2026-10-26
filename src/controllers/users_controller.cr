@@ -21,7 +21,7 @@ class UsersController < ApplicationController
     end
   end
 
-  # get /users/logout
+  # post /users/logout
   def logout
     acl_permit! :read
     forget_login_token

@@ -76,7 +76,7 @@ describe "remember-me tokens over HTTP" do
 
     # Logging out revokes this browser's token only.
     kept = second.jar["user.token"].value
-    first.get "/users/logout"
+    first.post "/users/logout", {} of String => String
     Fluence::USERS.load!["roamer"].tokens.should eq [kept]
     second.jar.delete "session_id"
     second.get("/users/settings").status_code.should eq 200
@@ -399,6 +399,21 @@ describe "session and cookie hardening" do
     stale = SpecClient.new
     stale.jar << HTTP::Cookie.new("session_id", before)
     stale.get("/users/settings").headers["Location"].should eq "/users/login"
+  end
+
+  it "logs out only with POST" do
+    client = SpecClient.login "leaver", "sekrit123"
+    body = client.get("/users/settings").body
+    body.should contain %(<form id="logout" class="d-inline" method="post" action="/users/logout">)
+    body.should_not contain %(href="/users/logout")
+
+    client.get("/users/logout").status_code.should_not eq 302
+    client.get("/users/settings").status_code.should eq 200
+
+    response = client.post "/users/logout", {} of String => String
+    response.headers["Location"].should eq "/users/login"
+    client.jar["user.token"]?.should be_nil
+    client.get("/users/settings").headers["Location"].should eq "/users/login"
   end
 
   it "does not echo arbitrary client cookies back into the response" do
@@ -788,7 +803,7 @@ describe "deleted accounts" do
       response.status_code.should eq 200
       response.body.should_not contain "Logged in as"
       response.body.should_not contain "<textarea"
-      client.get("/users/logout").status_code.should eq 302
+      client.post("/users/logout", {} of String => String).status_code.should eq 302
     end
   end
 end

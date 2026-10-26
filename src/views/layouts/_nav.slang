@@ -37,7 +37,8 @@ nav.navbar.navbar-expand-lg.bg-body-tertiary
             - settings_class = nav_link_class "#{Fluence::OPTIONS.users_prefix}/settings"
             a class="#{settings_class} d-inline p-0 ms-1" href="#{Fluence::OPTIONS.users_prefix}/settings" title="Settings" = current_user.name
           li.nav-item
-            a.nav-link href="#{Fluence::OPTIONS.users_prefix}/logout" (Logout)
+            form#logout.d-inline method="post" action="#{Fluence::OPTIONS.users_prefix}/logout"
+              button.nav-link type="submit" (Logout)
         - else
           - login_class = nav_link_class "#{Fluence::OPTIONS.users_prefix}/login"
           - register_class = nav_link_class "#{Fluence::OPTIONS.users_prefix}/register"
