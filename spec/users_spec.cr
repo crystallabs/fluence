@@ -75,6 +75,17 @@ describe Fluence::Users do
     Fluence::Users.new fresh
     (File.info(fresh).permissions.value & 0o777).should eq 0o600
   end
+
+  it "authenticates by login token" do
+    users = Fluence::Users.new File.tempname("fluence-spec-users")
+    users.add Fluence::User.new("alice", "pw")
+    users.auth_token?("alice", "anything").should be_nil
+    token = users["alice"].generate_new_token!
+    users.auth_token?("alice", token).should be users["alice"]
+    users.auth_token?("alice", token.rchop).should be_nil
+    users.auth_token?("alice", "").should be_nil
+    users.auth_token?("nobody", token).should be_nil
+  end
 end
 
 describe Fluence::User do
