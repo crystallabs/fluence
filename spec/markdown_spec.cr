@@ -24,6 +24,21 @@ describe Fluence::Markdown do
     html.should contain %(<h2 id="sub-part">Sub Part</h2>)
   end
 
+  it "gives same-named headings distinct ids, GitHub-style" do
+    html = Fluence::Markdown.to_html("# Notes\n## Notes\n### Notes\n# Notes 1\n")
+    html.should contain %(<h1 id="notes">Notes</h1>)
+    html.should contain %(<h2 id="notes-1">Notes</h2>)
+    html.should contain %(<h3 id="notes-2">Notes</h3>)
+    html.should contain %(<h1 id="notes-1-1">Notes 1</h1>)
+    # Each document starts afresh.
+    Fluence::Markdown.to_html("# Notes\n").should contain %(<h1 id="notes">)
+  end
+
+  it "hands out the same heading ids to the TOC as to the rendered page" do
+    toc = [{1, "Notes"}, {2, "Notes"}, {2, "Notes 1"}, {2, "Notes"}]
+    Fluence::Page::TableOfContent.anchors(toc).should eq ["notes", "notes-1", "notes-1-1", "notes-2"]
+  end
+
   it "does not treat code block content as headings" do
     Fluence::Markdown.to_html("```\n# not a heading\n```\n").should_not contain "<h1"
   end

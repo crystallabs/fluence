@@ -14,14 +14,16 @@ struct Fluence::Markdown
   MARKD_OPTIONS = Markd::Options.new(gfm: true, autolink: true, tagfilter: true, emoji: true, safe: true)
 
   # HTMLRenderer whose headings carry an id matching the anchors the
-  # table-of-contents helper generates (`Fluence::Page.sanitize` of the
-  # heading text), so TOC links actually land on their sections.
+  # table-of-contents helper generates (see `Page::TableOfContent::Anchors`),
+  # so TOC links actually land on their sections. Renders one document.
   class Renderer < Markd::HTMLRenderer
+    @anchors = Fluence::Page::TableOfContent::Anchors.new
+
     def heading(node : Markd::Node, entering : Bool) : Nil
       tag_name = HEADINGS[node.data["level"].as(Int32) - 1]
       if entering
         newline
-        tag(tag_name, {"id" => Fluence::Page.sanitize(plain_text(node))})
+        tag(tag_name, {"id" => @anchors.next(plain_text(node))})
       else
         tag(tag_name, end_tag: true)
         newline

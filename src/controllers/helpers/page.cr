@@ -97,15 +97,16 @@ module Fluence::Helpers::Page
     end
   end
 
-  # One TOC entry linking to the heading's anchor (see
-  # `Fluence::Markdown::Renderer#heading`). Heading text comes from page
-  # content, so it is escaped.
-  def create_toc_line(line, current_id, ends = true)
-    "<li><a href=\"##{Fluence::Page.sanitize line}\">#{HTML.escape line}</a>#{ends ? "</li>" : nil}\n"
+  # One TOC entry linking to the heading's *anchor* (see
+  # `Fluence::Page::TableOfContent::Anchors`). Heading text comes from
+  # page content, so it is escaped.
+  def create_toc_line(line, anchor : String, ends = true)
+    "<li><a href=\"##{anchor}\">#{HTML.escape line}</a>#{ends ? "</li>" : nil}\n"
   end
 
+  # *anchors* holds the id of each entry of *index_entry*.
   # TODO: move that
-  def add_toc_level(b, index_entry, current_id = 0, last_head = 0)
+  def add_toc_level(b, index_entry, anchors : Array(String), current_id = 0, last_head = 0)
     return if index_entry.size == current_id
     current_entry = index_entry[current_id]
     current_head = current_entry[0]
@@ -114,13 +115,13 @@ module Fluence::Helpers::Page
     next_head = next_entry ? next_entry[0] : 7
     close_li = next_head <= current_head
     if current_head > last_head
-      b << "<ol>\n" << create_toc_line(current_head_value, current_id, close_li)
+      b << "<ol>\n" << create_toc_line(current_head_value, anchors[current_id], close_li)
     elsif current_head < last_head
-      b << "</ol></li>\n" << create_toc_line(current_head_value, current_id, close_li)
+      b << "</ol></li>\n" << create_toc_line(current_head_value, anchors[current_id], close_li)
     else
-      b << create_toc_line(current_head_value, current_id, close_li)
+      b << create_toc_line(current_head_value, anchors[current_id], close_li)
     end
-    add_toc_level(b, index_entry, current_id + 1, current_head)
+    add_toc_level(b, index_entry, anchors, current_id + 1, current_head)
   end
 
   # Renders a unified diff as HTML lines classed by their role
@@ -146,7 +147,7 @@ module Fluence::Helpers::Page
   def add_toc(index_entry)
     # (index_entry.values.map(&.size).sum + index_entry.size * 9)
     toc = String.build do |b|
-      add_toc_level(b, index_entry)
+      add_toc_level(b, index_entry, Fluence::Page::TableOfContent.anchors(index_entry))
     end
     String.build do |str| # ameba:disable Lint/UnusedArgument
       Slang.embed("src/views/pages/toc.slang", "str")

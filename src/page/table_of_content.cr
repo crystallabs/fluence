@@ -3,6 +3,33 @@ class Fluence::Page < Fluence::File
     alias TocLine = {Int32, String}
     alias Toc = Array(TocLine)
 
+    # Hands out heading ids for one document, in document order: the
+    # heading text made URL-safe (`Page.sanitize`), deduplicated
+    # GitHub-style ("notes", "notes-1", "notes-2"). Both the rendered
+    # headings (`Fluence::Markdown::Renderer`) and the TOC links use it,
+    # so each link lands on its own section.
+    class Anchors
+      @used = Set(String).new
+      @counts = Hash(String, Int32).new(0)
+
+      # The id for the next heading, whose text is *text*.
+      def next(text : String) : String
+        base = Page.sanitize text
+        loop do
+          n = @counts[base]
+          @counts[base] = n + 1
+          id = n == 0 ? base : "#{base}-#{n}"
+          return id if @used.add? id
+        end
+      end
+    end
+
+    # The ids of the headings in *toc*, in order (see `Anchors`).
+    def self.anchors(toc : Toc) : Array(String)
+      anchors = Anchors.new
+      toc.map { |_, text| anchors.next text }
+    end
+
     # Builds the table of contents from markdown *content*, skipping
     # code (see `Page::Lines`).
     def self.toc(content : String) : Toc

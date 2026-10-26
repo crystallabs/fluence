@@ -783,6 +783,19 @@ describe "table of contents" do
       body.should_not contain "<b>bold</b>"
     end
   end
+
+  it "links each of several same-named headings to its own section" do
+    with_each_storage do |_, _|
+      Fluence::Page.new("toc-dup").update! SPEC_USER,
+        "# Toc Dup\n## Notes\ntext\n```\n## Notes\n```\n## Notes\n### Notes\n## Notes 1\n"
+
+      body = SpecClient.new.get("/pages/toc-dup").body
+      anchors = body.scan(/<li><a href="#([^"]*)">Notes/).map(&.[1])
+      anchors.should eq ["notes", "notes-1", "notes-2", "notes-1-1"]
+      ids = body.scan(/<h[1-6] id="([^"]*)">Notes/).map(&.[1])
+      ids.should eq anchors
+    end
+  end
 end
 
 describe "sitemap" do
