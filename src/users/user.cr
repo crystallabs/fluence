@@ -26,6 +26,10 @@ class Fluence::User
   # would also accept a name followed by a newline.
   NAME = /\A[A-Za-z0-9 _.-]+\z/
 
+  # Work factor of bcrypt password hashes. Specs lower it, since every
+  # registration and login in the suite would otherwise cost ~0.5 s.
+  class_property bcrypt_cost : Int32 = Crypto::Bcrypt::DEFAULT_COST
+
   def initialize(@name, @password, @groups = [] of String, @token : String? = nil)
     raise "Invalid name #{@name}" unless @name.matches? NAME # Security: Avoid escaping and injection of code
   end
@@ -36,7 +40,7 @@ class Fluence::User
   # Fluence::User.new("admin", "password", %w(admin)).encrypt!.password # => "$2a$11$G2i2.Km1DRbJtqDBFRhKXuSn8IwNVt7AypAP328T1OYq0wBugkgCm"
   # ```
   def encrypt!
-    @password = Crypto::Bcrypt::Password.create(@password).to_s
+    @password = Crypto::Bcrypt::Password.create(@password, cost: User.bcrypt_cost).to_s
     self
   end
 

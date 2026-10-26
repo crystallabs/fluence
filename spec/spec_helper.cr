@@ -16,6 +16,9 @@ require "../src/fluence"
 
 SPEC_USER = Fluence::User.new "spec", "password", %w(user)
 
+# Password hashing dominates the suite's run time at the default cost.
+Fluence::User.bcrypt_cost = Crypto::Bcrypt::COST_RANGE.begin
+
 # Runs the block once per storage backend, each time on a fresh temporary
 # repository assigned to `Fluence::Storage.current`.
 def with_each_storage(&)
