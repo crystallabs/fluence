@@ -129,12 +129,12 @@ module Fluence::Helpers::Page
     String.build do |b|
       diff.each_line do |line|
         css = case
-              when line.starts_with?("+++"), line.starts_with?("---") then "diff-meta"
-              when line.starts_with?('+')                              then "diff-add"
-              when line.starts_with?('-')                              then "diff-del"
-              when line.starts_with?("@@")                             then "diff-hunk"
+              when line.starts_with?("+++"), line.starts_with?("---")      then "diff-meta"
+              when line.starts_with?('+')                                  then "diff-add"
+              when line.starts_with?('-')                                  then "diff-del"
+              when line.starts_with?("@@")                                 then "diff-hunk"
               when line.starts_with?("diff "), line.starts_with?("index ") then "diff-meta"
-              else                                                          ""
+              else                                                              ""
               end
         b << (css.empty? ? "<span>" : %(<span class="#{css}">))
         HTML.escape line, b

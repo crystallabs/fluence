@@ -11,157 +11,157 @@ require "./page/*"
 # wiki storage. Title, table of contents, and internal links are derived
 # from the content on demand via `process!`; nothing is cached.
 class Fluence::Page < Fluence::File
-	property slug : String  # URL-friendly title
-	property toc : Page::TableOfContent::Toc
-	property intlinks : Page::InternalLinks::LinkList
+  property slug : String # URL-friendly title
+  property toc : Page::TableOfContent::Toc
+  property intlinks : Page::InternalLinks::LinkList
 
-	def initialize(name : String)
-		name = Page.sanitize(name).strip "/"
-		title = ::File.basename name
-		super("pages/#{name}.md", name, "#{Fluence::OPTIONS.pages_prefix}/#{name}", title)
+  def initialize(name : String)
+    name = Page.sanitize(name).strip "/"
+    title = ::File.basename name
+    super("pages/#{name}.md", name, "#{Fluence::OPTIONS.pages_prefix}/#{name}", title)
 
-		@slug = Page.title_to_slug @title
-		@intlinks = Page::InternalLinks::LinkList.new
-		@toc = Page::TableOfContent::Toc.new
+    @slug = Page.title_to_slug @title
+    @intlinks = Page::InternalLinks::LinkList.new
+    @toc = Page::TableOfContent::Toc.new
 
-		jail!
-	end
+    jail!
+  end
 
-	def storage_prefix : String
-		"pages"
-	end
+  def storage_prefix : String
+    "pages"
+  end
 
-	def kind : String
-		"page"
-	end
+  def kind : String
+    "page"
+  end
 
-	# Beginning of the URL
-	def url_prefix : String
-		Fluence::OPTIONS.pages_prefix
-	end
+  # Beginning of the URL
+  def url_prefix : String
+    Fluence::OPTIONS.pages_prefix
+  end
 
-	# Translates a storage path ("pages/test/title.md") into a page name
-	# ("test/title"); nil for paths that are not wiki pages, or whose name
-	# is not addressable by URL (see `File.canonical_name?`).
-	def self.storage_path_to_name(path : String) : String?
-		return nil unless path.starts_with?("pages/") && path.ends_with?(".md")
-		name = path.lchop("pages/").chomp(".md")
-		name if canonical_name?(name)
-	end
+  # Translates a storage path ("pages/test/title.md") into a page name
+  # ("test/title"); nil for paths that are not wiki pages, or whose name
+  # is not addressable by URL (see `File.canonical_name?`).
+  def self.storage_path_to_name(path : String) : String?
+    return nil unless path.starts_with?("pages/") && path.ends_with?(".md")
+    name = path.lchop("pages/").chomp(".md")
+    name if canonical_name?(name)
+  end
 
-	# Content a new page starts with in the editor: a heading made from the
-	# last component of the name ("docs/my-page" -> "# My Page").
-	def default_content : String
-		"# #{::File.basename(@name).split('-').map(&.capitalize).join(' ')}\n\n"
-	end
+  # Content a new page starts with in the editor: a heading made from the
+  # last component of the name ("docs/my-page" -> "# My Page").
+  def default_content : String
+    "# #{::File.basename(@name).split('-').map(&.capitalize).join(' ')}\n\n"
+  end
 
-	# Pages take their display title from their first markdown heading.
-	def self.titled?
-		true
-	end
+  # Pages take their display title from their first markdown heading.
+  def self.titled?
+    true
+  end
 
-	# Re-derives title, table of contents, and internal links from content.
-	def process!
-		content = exists? ? read : ""
-		heading = content.each_line.find(&.starts_with?("# "))
-		@title = heading ? heading.lchop("# ").strip : ::File.basename(@name)
-		@slug = Page.title_to_slug @title
-		@toc = Page::TableOfContent.toc content
-		@intlinks = Page::InternalLinks.links_in_content content, @name
-		self
-	end
+  # Re-derives title, table of contents, and internal links from content.
+  def process!
+    content = exists? ? read : ""
+    heading = content.each_line.find(&.starts_with?("# "))
+    @title = heading ? heading.lchop("# ").strip : ::File.basename(@name)
+    @slug = Page.title_to_slug @title
+    @toc = Page::TableOfContent.toc content
+    @intlinks = Page::InternalLinks.links_in_content content, @name
+    self
+  end
 
-	def children1
-		Fluence::PAGES.children1 self
-	end
+  def children1
+    Fluence::PAGES.children1 self
+  end
 
-	# Does any page exist below this one?
-	def directory?
-		prefix = @name + "/"
-		Fluence::PAGES.names.any? &.starts_with?(prefix)
-	end
+  # Does any page exist below this one?
+  def directory?
+    prefix = @name + "/"
+    Fluence::PAGES.names.any? &.starts_with?(prefix)
+  end
 
-	# Names of the existing pages below this one.
-	private def subpage_names : Array(String)
-		prefix = @name + "/"
-		Fluence::PAGES.names.select &.starts_with?(prefix)
-	end
+  # Names of the existing pages below this one.
+  private def subpage_names : Array(String)
+    prefix = @name + "/"
+    Fluence::PAGES.names.select &.starts_with?(prefix)
+  end
 
-	# Storage paths of this page's attachments: everything under
-	# "media/<name>/" except what belongs to a subpage, whose attachments
-	# are its own and stay with it.
-	def attachment_paths : Array(String)
-		reserved = subpage_names.map { |name| "media/#{name}/" }
-		storage.list("media/#{@name}/").reject { |path| reserved.any? { |dir| path.starts_with? dir } }
-	end
+  # Storage paths of this page's attachments: everything under
+  # "media/<name>/" except what belongs to a subpage, whose attachments
+  # are its own and stay with it.
+  def attachment_paths : Array(String)
+    reserved = subpage_names.map { |name| "media/#{name}/" }
+    storage.list("media/#{@name}/").reject { |path| reserved.any? { |dir| path.starts_with? dir } }
+  end
 
-	# Deletes the page together with its attachments (but not those of
-	# subpages, see `#attachment_paths`), in one commit.
-	def delete(user : Fluence::User)
-		jail!
-		attachments = attachment_paths
-		details = attachments.empty? ? nil : "Removed along:\n" + attachments.join("\n") { |path| "  #{path}" }
-		storage.delete [@path] + attachments, user, commit_message("Delete #{kind} #{@name}", nil, details)
-		self
-	end
+  # Deletes the page together with its attachments (but not those of
+  # subpages, see `#attachment_paths`), in one commit.
+  def delete(user : Fluence::User)
+    jail!
+    attachments = attachment_paths
+    details = attachments.empty? ? nil : "Removed along:\n" + attachments.join("\n") { |path| "  #{path}" }
+    storage.delete [@path] + attachments, user, commit_message("Delete #{kind} #{@name}", nil, details)
+    self
+  end
 
-	# Renames the page without modifying the current Page object. The
-	# page's attachments move with it, in the same commit.
-	# Returns the new Page object.
-	def rename(user : Fluence::User, new_name, overwrite = false)
-		new_page = Page.new(new_name)
-		old_prefix = "media/#{@name}/"
-		moves = attachment_paths.map { |path| {path, "media/#{new_page.name}/#{path.lchop old_prefix}"} }
-		rename_to new_page, user, overwrite, moves
-	end
+  # Renames the page without modifying the current Page object. The
+  # page's attachments move with it, in the same commit.
+  # Returns the new Page object.
+  def rename(user : Fluence::User, new_name, overwrite = false)
+    new_page = Page.new(new_name)
+    old_prefix = "media/#{@name}/"
+    moves = attachment_paths.map { |path| {path, "media/#{new_page.name}/#{path.lchop old_prefix}"} }
+    rename_to new_page, user, overwrite, moves
+  end
 
-	# Renames the page (with its attachments), updates self, and returns
-	# self. Links to the moved attachments are rewritten in the page itself;
-	# with *intlinks*, links pointing at the old page name (and at its
-	# attachments) are rewritten in all other pages too.
-	def rename!(user : Fluence::User, new_name, overwrite = false, intlinks = false)
-		old_name = @name
-		# Attachments of subpages do not move, so links to them stay as well.
-		keep = subpage_names.map { |name| media_url_for name }
-		new_page = rename user, new_name, overwrite
-		@path = new_page.path
-		@name = new_page.name
-		@url = new_page.url
+  # Renames the page (with its attachments), updates self, and returns
+  # self. Links to the moved attachments are rewritten in the page itself;
+  # with *intlinks*, links pointing at the old page name (and at its
+  # attachments) are rewritten in all other pages too.
+  def rename!(user : Fluence::User, new_name, overwrite = false, intlinks = false)
+    old_name = @name
+    # Attachments of subpages do not move, so links to them stay as well.
+    keep = subpage_names.map { |name| media_url_for name }
+    new_page = rename user, new_name, overwrite
+    @path = new_page.path
+    @name = new_page.name
+    @url = new_page.url
 
-		rewrite_attachment_links user, old_name, self, keep
-		update_links user, old_name, keep if intlinks
-		process!
+    rewrite_attachment_links user, old_name, self, keep
+    update_links user, old_name, keep if intlinks
+    process!
 
-		self
-	end
+    self
+  end
 
-	# URL under which the attachments of the page named *name* live.
-	private def media_url_for(name : String) : String
-		"#{Fluence::OPTIONS.media_prefix}/#{name}"
-	end
+  # URL under which the attachments of the page named *name* live.
+  private def media_url_for(name : String) : String
+    "#{Fluence::OPTIONS.media_prefix}/#{name}"
+  end
 
-	# Rewrites links to attachments of the page formerly named *old_name*
-	# in *page* to their new location, except links under the *keep* URL
-	# prefixes (attachments of subpages). No-op when nothing changes.
-	private def rewrite_attachment_links(user : Fluence::User, old_name : String, page : Page, keep : Array(String))
-		content = page.read rescue return
-		updated = Page::InternalLinks.rewrite_prefix content, media_url_for(old_name), media_url_for(@name), except: keep
-		return if updated == content
-		page.write user, updated, nil, "Rewrite attachment links after renaming page #{old_name} -> #{@name}"
-	end
+  # Rewrites links to attachments of the page formerly named *old_name*
+  # in *page* to their new location, except links under the *keep* URL
+  # prefixes (attachments of subpages). No-op when nothing changes.
+  private def rewrite_attachment_links(user : Fluence::User, old_name : String, page : Page, keep : Array(String))
+    content = page.read rescue return
+    updated = Page::InternalLinks.rewrite_prefix content, media_url_for(old_name), media_url_for(@name), except: keep
+    return if updated == content
+    page.write user, updated, nil, "Rewrite attachment links after renaming page #{old_name} -> #{@name}"
+  end
 
-	# Rewrites markdown links resolving to *old_name*, and links to its
-	# attachments (but not those under *keep*), in all other pages to point
-	# at this page's current name.
-	private def update_links(user : Fluence::User, old_name : String, keep : Array(String))
-		Fluence::PAGES.names.each do |name|
-			next if name == @name
-			page = Fluence::Page.new name
-			content = page.read rescue next
-			updated = Page::InternalLinks.rewrite_links content, name, old_name, @url
-			updated = Page::InternalLinks.rewrite_prefix updated, media_url_for(old_name), media_url_for(@name), except: keep
-			next if updated == content
-			page.write user, updated, nil, "Update links after renaming page #{old_name} -> #{@name}"
-		end
-	end
+  # Rewrites markdown links resolving to *old_name*, and links to its
+  # attachments (but not those under *keep*), in all other pages to point
+  # at this page's current name.
+  private def update_links(user : Fluence::User, old_name : String, keep : Array(String))
+    Fluence::PAGES.names.each do |name|
+      next if name == @name
+      page = Fluence::Page.new name
+      content = page.read rescue next
+      updated = Page::InternalLinks.rewrite_links content, name, old_name, @url
+      updated = Page::InternalLinks.rewrite_prefix updated, media_url_for(old_name), media_url_for(@name), except: keep
+      next if updated == content
+      page.write user, updated, nil, "Update links after renaming page #{old_name} -> #{@name}"
+    end
+  end
 end

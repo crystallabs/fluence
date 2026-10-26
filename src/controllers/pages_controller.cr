@@ -1,5 +1,4 @@
 class PagesController < ApplicationController
-
   # get /pages/*path
   #
   # Query parameters select the page's history views, which share the
@@ -125,9 +124,9 @@ class PagesController < ApplicationController
       update_rename(page)
     elsif params.body["delete"]?
       update_delete(page)
-    # We do not want empty body to mean page deletion.
-    #elsif (params.body["body"]?.to_s.empty?)
-    #  update_delete(page)
+      # We do not want empty body to mean page deletion.
+      # elsif (params.body["body"]?.to_s.empty?)
+      #  update_delete(page)
     else
       update_edit(page)
     end

@@ -87,7 +87,7 @@ class Fluence::Users < Lockable
 
   # find a user based on its name
   def find?(name : String) : User?
-		@list[name]?
+    @list[name]?
   end
 
   def [](name : String) : User
@@ -98,15 +98,15 @@ class Fluence::Users < Lockable
     find? name
   end
 
-  def each
+  def each(&)
     @list.each { |_, user| yield user }
   end
 
-  def map
+  def map(&)
     @list.map { |_, user| yield user }
   end
 
-  def map!
+  def map!(&)
     @list.map! { |name, user| {name, yield user} }
   end
 
@@ -121,7 +121,9 @@ class Fluence::Users < Lockable
   # Returns nil if it fails
   def auth?(name : String, password : String) : User?
     user = find?(name)
-    if user.try do |u| u.password_encrypted.verify password end
+    if user.try do |u|
+         u.password_encrypted.verify password
+       end
       user
     else
       nil

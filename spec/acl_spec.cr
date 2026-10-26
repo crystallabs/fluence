@@ -5,10 +5,10 @@ describe Acl do
       name: "user",
       default: Acl::Perm::Read,
       permissions: {
-        "/tmp/protected" => Acl::Perm::None,
-        "/tmp/write/*"   => Acl::Perm::Write,
-        "/match/*" => Acl::Perm::Write,
-        "/match/not-file" => Acl::Perm::None,
+        "/tmp/protected"   => Acl::Perm::None,
+        "/tmp/write/*"     => Acl::Perm::Write,
+        "/match/*"         => Acl::Perm::Write,
+        "/match/not-file"  => Acl::Perm::None,
         "/match/not-dir/*" => Acl::Perm::None,
       })
     g2 = Acl::Group.new(

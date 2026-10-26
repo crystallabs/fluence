@@ -36,11 +36,11 @@ describe Acl::Group do
     g = Acl::Group.new(
       name: "guest",
       permissions: {
-        Acl::Path.new("/public*") => Acl::Perm::Write,
-        Acl::Path.new("/restricted*") => Acl::Perm::Read,
-        Acl::Path.new("/users*") => Acl::Perm::Read,
-        Acl::Path.new("/users/guest") => Acl::Perm::Write,
-        Acl::Path.new("/users/protected/*") => Acl::Perm::None
+        Acl::Path.new("/public*")           => Acl::Perm::Write,
+        Acl::Path.new("/restricted*")       => Acl::Perm::Read,
+        Acl::Path.new("/users*")            => Acl::Perm::Read,
+        Acl::Path.new("/users/guest")       => Acl::Perm::Write,
+        Acl::Path.new("/users/protected/*") => Acl::Perm::None,
       },
       default: Acl::Perm::None
     )
@@ -62,12 +62,12 @@ describe Acl::Group do
     g = Acl::Group.new(
       name: "guest",
       permissions: {
-        Acl::Path.new("/write/*") => Acl::Perm::Write,
-        Acl::Path.new("/read/*") => Acl::Perm::Read,
-        Acl::Path.new("/none/*") => Acl::Perm::None,
-        Acl::Path.new("/read/none") => Acl::Perm::None,
-        Acl::Path.new("/write/none") => Acl::Perm::None,
-        Acl::Path.new("/none/readonly") => Acl::Perm::Read,
+        Acl::Path.new("/write/*")        => Acl::Perm::Write,
+        Acl::Path.new("/read/*")         => Acl::Perm::Read,
+        Acl::Path.new("/none/*")         => Acl::Perm::None,
+        Acl::Path.new("/read/none")      => Acl::Perm::None,
+        Acl::Path.new("/write/none")     => Acl::Perm::None,
+        Acl::Path.new("/none/readonly")  => Acl::Perm::Read,
         Acl::Path.new("/write/readonly") => Acl::Perm::Read,
         Acl::Path.new("/read/writeonly") => Acl::Perm::Write,
         Acl::Path.new("/none/writeonly") => Acl::Perm::Write,
@@ -93,16 +93,17 @@ describe Acl::Group do
     g = Acl::Group.new(
       name: "guest",
       permissions: {
-        "/public*" => Acl::Perm::Write,
+        "/public*"     => Acl::Perm::Write,
         "/restricted*" => Acl::Perm::Read,
-        "/users*" => Acl::Perm::Read,
-        "/users/guest" => Acl::Perm::Write},
+        "/users*"      => Acl::Perm::Read,
+        "/users/guest" => Acl::Perm::Write,
+      },
       default: Acl::Perm::None
     )
     g["/"]?.should eq nil
     g["/"].should eq g.default
     # TODO: enable this test after changing the design of operator [] to do not match path
-    #g["/public"]?.should eq nil
+    # g["/public"]?.should eq nil
     g["/public*"]?.should eq Acl::Perm::Write
 
     g["/"] = Acl::Perm::Read

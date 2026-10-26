@@ -1,11 +1,9 @@
 # Please configure the defaults to your needs.
 
 module Fluence
-
   # Application config. Feel free to tune the instance variables.
   class Options
     def initialize
-
       # Host/port to listen on.
       @host = "0.0.0.0"
       @port = 3000
@@ -17,7 +15,7 @@ module Fluence
 
       # The username, password, and default groups that the default/unauthenticated
       # user should have.
-      @guest = { "guest", "guest", %w(guest) }
+      @guest = {"guest", "guest", %w(guest)}
 
       # Location of data/ and meta/ directories. Defaults to $PWD/{data,meta}
       @datadir = ::File.expand_path ENV.fetch("FLUENCE_DATADIR", "data"), Dir.current
@@ -102,6 +100,7 @@ module Fluence
     def registration_open?
       @registration != "closed"
     end
+
     getter open_in_edit : Bool
     getter open_new_in_edit : Bool
     getter open_empty_in_edit : Bool
