@@ -2,7 +2,7 @@
 [![Version](https://img.shields.io/github/tag/crystallabs/fluence.svg?maxAge=360)](https://github.com/crystallabs/fluence/releases/latest)
 [![License](https://img.shields.io/github/license/crystallabs/fluence.svg)](https://github.com/crystallabs/fluence/blob/master/LICENSE)
 
-# Fluence 0.8.4
+# Fluence
 
 Elegant wiki powered by Crystal, with markdown as native format and a WYSIWYG editor.
 
