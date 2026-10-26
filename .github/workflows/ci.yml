@@ -12,7 +12,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        crystal: [latest, nightly]
+        # 1.21.0 is the version the Dockerfile and the release workflow
+        # build with; latest and nightly catch upcoming breakage.
+        crystal: ["1.21.0", latest, nightly]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -29,6 +31,9 @@ jobs:
 
       - name: Install dependencies
         run: shards install
+
+      - name: Check formatting
+        run: crystal tool format --check src spec config
 
       - name: Run specs
         run: crystal spec
