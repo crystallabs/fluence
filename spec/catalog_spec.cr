@@ -2,7 +2,7 @@ require "./spec_helper"
 
 describe Fluence::Catalog do
   it "lists names, titles, and hierarchy from storage" do
-    with_each_storage do |storage, kind|
+    with_each_storage do
       Fluence::Page.new("home").update! SPEC_USER, "# Welcome Home\nHello."
       Fluence::Page.new("other").update! SPEC_USER, "no heading here"
       Fluence::Page.new("dir/sub").update! SPEC_USER, "# Subpage\n"
@@ -15,13 +15,13 @@ describe Fluence::Catalog do
       titles["dir/sub"].should eq "Subpage"
 
       top = Fluence::PAGES.children1
-      top.keys.sort.should eq ["dir", "home", "other"]
+      top.keys.sort!.should eq ["dir", "home", "other"]
       top["dir"][1].should be_nil
-      top["home"][1].not_nil!.title.should eq "Welcome Home"
+      top["home"][1].try(&.title).should eq "Welcome Home"
 
       Fluence::PAGES.children1("dir").keys.should eq ["dir/sub"]
 
-      page = Fluence::PAGES["home"]?.not_nil!
+      page = Fluence::PAGES["home"]
       page.toc.should eq [{1, "Welcome Home"}]
       Fluence::PAGES["missing"]?.should be_nil
 
@@ -32,7 +32,7 @@ describe Fluence::Catalog do
   end
 
   it "resolves internal links by title and searches content" do
-    with_each_storage do |storage, kind|
+    with_each_storage do
       Fluence::Page.new("home").update! SPEC_USER, "# Welcome Home\nsecretword here"
       context = Fluence::Page.new("context")
 
@@ -51,7 +51,7 @@ describe Fluence::Catalog do
   end
 
   it "renames pages and rewrites internal links" do
-    with_each_storage do |storage, kind|
+    with_each_storage do
       Fluence::Page.new("a").update! SPEC_USER, "# A\nSee [b](b) and [Custom](/pages/b). Not [bb](bb)."
       b = Fluence::Page.new("b").update! SPEC_USER, "# B\n"
 
@@ -65,7 +65,7 @@ describe Fluence::Catalog do
   end
 
   it "refuses renaming onto an existing page unless overwriting" do
-    with_each_storage do |storage, kind|
+    with_each_storage do
       a = Fluence::Page.new("a").update! SPEC_USER, "# A\n"
       Fluence::Page.new("b").update! SPEC_USER, "# B\n"
 
@@ -82,7 +82,7 @@ end
 
 describe Fluence::Catalog do
   it "breaks title ties by URL closeness even when a candidate URL is shorter" do
-    with_each_storage do |storage, kind|
+    with_each_storage do
       Fluence::Page.new("docs").update! SPEC_USER, "# Docs\n"
       Fluence::Page.new("other/docs").update! SPEC_USER, "# Docs\n"
 
@@ -92,7 +92,7 @@ describe Fluence::Catalog do
   end
 
   it "lists only names that are reachable by URL" do
-    with_each_storage do |storage, kind|
+    with_each_storage do |storage, _|
       storage.write "pages/README.md", "# Read Me\n", SPEC_USER, "pushed"
       storage.write "pages/My Notes.md", "# My Notes\n", SPEC_USER, "pushed"
       storage.write "pages/docs/user-guide.md", "# Guide\n", SPEC_USER, "pushed"

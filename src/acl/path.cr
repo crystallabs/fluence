@@ -35,7 +35,7 @@ class Acl::Path
   end
 
   def ==(rhs)
-    self.to_s == rhs.to_s
+    to_s == rhs.to_s
   end
 
   {% for op in [">", "<", ">=", "<="] %}

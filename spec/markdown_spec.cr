@@ -43,7 +43,7 @@ end
 
 describe Fluence::WikilinkMigration do
   it "converts wikilinks to standard links, resolving titles" do
-    with_each_storage do |storage, kind|
+    with_each_storage do
       Fluence::Page.new("real-page").update! SPEC_USER, "# My Real Page\n"
       page = Fluence::Page.new("test")
 
@@ -55,7 +55,7 @@ describe Fluence::WikilinkMigration do
   end
 
   it "leaves code blocks and escaped brackets alone" do
-    with_each_storage do |storage, kind|
+    with_each_storage do
       page = Fluence::Page.new("test")
 
       Fluence::WikilinkMigration.convert("```\n[[test]]\n```\n[[test]]", page)
@@ -68,7 +68,7 @@ describe Fluence::WikilinkMigration do
   end
 
   it "rewrites and commits affected pages" do
-    with_each_storage do |storage, kind|
+    with_each_storage do
       Fluence::Page.new("target").update! SPEC_USER, "# Target\n"
       Fluence::Page.new("linker").update! SPEC_USER, "See [[Target]].\n"
       Fluence::Page.new("plain").update! SPEC_USER, "No links here.\n"

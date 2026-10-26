@@ -26,7 +26,7 @@ describe Fluence::Page do
   end
 
   it "derives title, toc, and intlinks from content" do
-    with_each_storage do |storage, kind|
+    with_each_storage do
       page = Fluence::Page.new("guide")
       page.update! SPEC_USER, "# The Guide\n## Part One\nSee [other](other).\n"
       page.title.should eq "The Guide"
@@ -40,7 +40,7 @@ end
 
 describe Fluence::Page do
   it "moves attachments along on rename and rewrites links to them" do
-    with_each_storage do |storage, kind|
+    with_each_storage do |storage, _|
       page = Fluence::Page.new("docs/guide")
       page.update! SPEC_USER, "# Guide\n![Shot](/media/docs/guide/shot.png) [pdf](/media/docs/guide/manual.pdf) [other](/media/docs/guidebook/x.png)\n"
       Fluence::Media.new("docs/guide/shot.png").write SPEC_USER, "PNG"
@@ -65,7 +65,7 @@ describe Fluence::Page do
   end
 
   it "describes each write in the commit message" do
-    with_each_storage do |storage, kind|
+    with_each_storage do |storage, _|
       page = Fluence::Page.new("notes")
       page.update! SPEC_USER, "# Notes\n", "  Started the notes page  "
       page.update! SPEC_USER, "# Notes\nmore\n"
@@ -82,7 +82,7 @@ end
 
 describe Fluence::Page do
   it "deletes its attachments, but not those of subpages, along with the page" do
-    with_each_storage do |storage, kind|
+    with_each_storage do |storage, _|
       Fluence::Page.new("a").update! SPEC_USER, "# A\n"
       Fluence::Page.new("a/b").update! SPEC_USER, "# B\n"
       Fluence::Media.new("a/own.png").write SPEC_USER, "OWN"
@@ -103,7 +103,7 @@ describe Fluence::Page do
   end
 
   it "leaves subpages' attachments and the links to them alone when the parent is renamed" do
-    with_each_storage do |storage, kind|
+    with_each_storage do |storage, _|
       Fluence::Page.new("a").update! SPEC_USER, "# A\n![own](/media/a/own.png) ![sub](/media/a/b/pic.png)\n"
       Fluence::Page.new("a/b").update! SPEC_USER, "# B\n![pic](/media/a/b/pic.png) ![up](/media/a/own.png)\n"
       Fluence::Media.new("a/own.png").write SPEC_USER, "OWN"

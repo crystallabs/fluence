@@ -85,14 +85,14 @@ module Fluence::Helpers::Page
   # Renders *nodes* as a collapsible tree. Branches containing *current*
   # start expanded; with *current* nil (the sitemap) every branch does.
   def add_page_tree(nodes : Array(TreeNode), current : String?)
-    String.build do |str|
+    String.build do |str| # ameba:disable Lint/UnusedArgument
       Slang.embed("src/views/pages/page_tree.slang", "str")
     end
   end
 
   # Renders *nodes* (from `media_tree`) as a nested list.
   def add_media(nodes : Array(TreeNode))
-    String.build do |str|
+    String.build do |str| # ameba:disable Lint/UnusedArgument
       Slang.embed("src/views/pages/media_tree.slang", "str")
     end
   end
@@ -120,7 +120,7 @@ module Fluence::Helpers::Page
     else
       b << create_toc_line(current_head_value, current_id, close_li)
     end
-    return add_toc_level(b, index_entry, current_id + 1, current_head)
+    add_toc_level(b, index_entry, current_id + 1, current_head)
   end
 
   # Renders a unified diff as HTML lines classed by their role
@@ -148,7 +148,7 @@ module Fluence::Helpers::Page
     toc = String.build do |b|
       add_toc_level(b, index_entry)
     end
-    String.build do |str|
+    String.build do |str| # ameba:disable Lint/UnusedArgument
       Slang.embed("src/views/pages/toc.slang", "str")
     end
   end

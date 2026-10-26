@@ -19,8 +19,8 @@ describe Acl do
       default: Acl::Perm::Write)
     acls.add g1
     acls.add g2
-    u1 = Fluence::User.new "u1", "", %w(user)
-    u2 = Fluence::User.new "u2", "", %w(user admin)
+    u1 = Fluence::User.new "u1", "", %w[user]
+    u2 = Fluence::User.new "u2", "", %w[user admin]
 
     # simple
     acls.permitted?(u1, "/", Acl::Perm::Read).should be_true
@@ -42,18 +42,18 @@ describe Acl do
   end
 
   it "test the paths matching" do
-    Acl::Path.new("/*").acl_match?("/a/test").should eq(true)
-    Acl::Path.new("/a*").acl_match?("/a/test").should eq(true)
-    Acl::Path.new("/a/test*").acl_match?("/a/test").should eq(true)
-    Acl::Path.new("/a/test*").acl_match?("/a/test/").should eq(true)
-    Acl::Path.new("/a/test*").acl_match?("/b/test").should eq(false)
-    Acl::Path.new("/a/test*").acl_match?("/a/other").should eq(false)
+    Acl::Path.new("/*").acl_match?("/a/test").should be_true
+    Acl::Path.new("/a*").acl_match?("/a/test").should be_true
+    Acl::Path.new("/a/test*").acl_match?("/a/test").should be_true
+    Acl::Path.new("/a/test*").acl_match?("/a/test/").should be_true
+    Acl::Path.new("/a/test*").acl_match?("/b/test").should be_false
+    Acl::Path.new("/a/test*").acl_match?("/a/other").should be_false
     # Only "*" is special; regex metacharacters are literal.
-    Acl::Path.new("/pages/a.b").acl_match?("/pages/a.b").should eq(true)
-    Acl::Path.new("/pages/a.b").acl_match?("/pages/aXb").should eq(false)
-    Acl::Path.new("/pages/(x)+").acl_match?("/pages/(x)+").should eq(true)
-    Acl::Path.new("/pages/(x)+").acl_match?("/pages/x").should eq(false)
-    Acl::Path.new("/pages/*").acl_match?("/pages/a\nb").should eq(false)
+    Acl::Path.new("/pages/a.b").acl_match?("/pages/a.b").should be_true
+    Acl::Path.new("/pages/a.b").acl_match?("/pages/aXb").should be_false
+    Acl::Path.new("/pages/(x)+").acl_match?("/pages/(x)+").should be_true
+    Acl::Path.new("/pages/(x)+").acl_match?("/pages/x").should be_false
+    Acl::Path.new("/pages/*").acl_match?("/pages/a\nb").should be_false
   end
 
   it "groups having" do

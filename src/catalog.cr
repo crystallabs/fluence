@@ -17,7 +17,7 @@ module Fluence
 
     # All entry names under this catalog's prefix, e.g. ["home", "dir/sub"].
     def names : Array(String)
-      storage.list(@prefix).compact_map { |p| T.storage_path_to_name p }
+      storage.list(@prefix).compact_map { |path| T.storage_path_to_name path }
     end
 
     # Map of name => display title. For titled content (pages) the title is
@@ -68,10 +68,10 @@ module Fluence
       pattern = name.empty? ? /^(.+?)($|\/)/ : /^(#{Regex.escape(name)}\/(.+?))($|\/)/
       key_group = name.empty? ? 1 : 2
       last_group = name.empty? ? 2 : 3
-      all.each do |n|
-        if md = n.match pattern
+      all.each do |entry|
+        if md = entry.match pattern
           key = md[key_group].to_s
-          val = md[last_group]? == "/" ? nil : entry_with_title(n, titles_map)
+          val = md[last_group]? == "/" ? nil : entry_with_title(entry, titles_map)
           ret[md[1]] = {key, val} if !ret[md[1]]? || val
         end
       end
@@ -84,9 +84,9 @@ module Fluence
     def find(text : String, context : T) : {String, String}
       slug = T.title_to_slug text
       titles_map = titles
-      matches = titles_map.keys.select { |n| T.title_to_slug(titles_map[n]) == slug }
+      matches = titles_map.keys.select { |entry| T.title_to_slug(titles_map[entry]) == slug }
       unless matches.empty?
-        best = matches.map { |n| T.new n }.reduce do |lhs, rhs|
+        best = matches.map { |entry| T.new entry }.reduce do |lhs, rhs|
           Catalog.url_closeness(context.url, lhs.url) >= Catalog.url_closeness(context.url, rhs.url) ? lhs : rhs
         end
         return {titles_map[best.name], best.url}
@@ -98,10 +98,10 @@ module Fluence
     # to *slug*, ordered by name and carrying their titles.
     def with_slug(slug : String) : Array(T)
       titles_map = titles
-      names = titles_map.keys.select do |n|
-        T.title_to_slug(titles_map[n]) == slug || T.title_to_slug(::File.basename(n)) == slug
+      names = titles_map.keys.select do |entry|
+        T.title_to_slug(titles_map[entry]) == slug || T.title_to_slug(::File.basename(entry)) == slug
       end
-      names.sort.map { |n| entry_with_title n, titles_map }
+      names.sort.map { |entry| entry_with_title entry, titles_map }
     end
 
     # Returns names matching *query* (case-insensitive) in their name,
@@ -109,10 +109,10 @@ module Fluence
     def search(query : String) : Array(String)
       q = query.downcase
       titles_map = titles
-      name_hits = titles_map.keys.select do |n|
-        n.downcase.includes?(q) || titles_map[n].downcase.includes?(q)
+      name_hits = titles_map.keys.select do |entry|
+        entry.downcase.includes?(q) || titles_map[entry].downcase.includes?(q)
       end
-      content_hits = storage.search(query, @prefix).compact_map { |p| T.storage_path_to_name p }
+      content_hits = storage.search(query, @prefix).compact_map { |path| T.storage_path_to_name path }
       (name_hits | content_hits).sort
     end
 

@@ -26,7 +26,7 @@ class AdminController < ApplicationController
     acl_permit! :write
     attempt do
       username = params.body["username"]
-      Fluence::USERS.transaction! { |users| users.delete username }
+      Fluence::USERS.transaction!(&.delete(username))
       flash["success"] = "The user #{username} has been deleted."
     end
     redirect_to "#{Fluence::OPTIONS.admin_prefix}/users"

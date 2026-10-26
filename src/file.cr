@@ -180,7 +180,7 @@ abstract class Fluence::File
   end
 
   def self.sanitize(text : String)
-    self.title_to_slug URI.decode(text)
+    title_to_slug URI.decode(text)
   end
 
   def self.title_to_slug(title : String) : String

@@ -11,7 +11,7 @@ module Fluence::Helpers::User
   def uses_login_cookies
     unless user_signed_in?
       if (name = cookies["user.name"]?) && (token = cookies["user.token"]?)
-        if (user = Fluence::USERS.auth_token?(name.value, token.value))
+        if user = Fluence::USERS.auth_token?(name.value, token.value)
           session.string("user.name", user.name)
           set_login_cookies_for(user.name)
         else

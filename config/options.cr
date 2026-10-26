@@ -15,7 +15,7 @@ module Fluence
 
       # The username, password, and default groups that the default/unauthenticated
       # user should have.
-      @guest = {"guest", "guest", %w(guest)}
+      @guest = {"guest", "guest", %w[guest]}
 
       # Location of data/ and meta/ directories. Defaults to $PWD/{data,meta}
       @datadir = ::File.expand_path ENV.fetch("FLUENCE_DATADIR", "data"), Dir.current

@@ -123,7 +123,7 @@ class Acl::Groups < Lockable
 
   def add_permissions_to(path : String, groups : Array(String), acl : Acl::Perm)
     groups.each do |group|
-      self.add group unless group_exists? group
+      add group unless group_exists? group
       old_acl = self[group][path]?
       self[group][path] = acl if old_acl.nil? || old_acl.to_i < acl.to_i
     end
@@ -131,8 +131,8 @@ class Acl::Groups < Lockable
   end
 
   def clear_permissions_of(path : String)
-    self.clear_permissions_of(path, Acl::Perm::Read)
-    self.clear_permissions_of(path, Acl::Perm::Write)
+    clear_permissions_of(path, Acl::Perm::Read)
+    clear_permissions_of(path, Acl::Perm::Write)
   end
 
   def clear_permissions_of(path : String, acl : Acl::Perm)

@@ -44,10 +44,10 @@ describe "serialization" do
   end
 
   it "round-trips a User through YAML" do
-    u1 = Fluence::User.new "tester", "password", %w(user admin)
+    u1 = Fluence::User.new "tester", "password", %w[user admin]
     u2 = Fluence::User.from_yaml u1.to_yaml
     u2.name.should eq "tester"
-    u2.groups.should eq %w(user admin)
+    u2.groups.should eq %w[user admin]
     u2.token.should be_nil
   end
 

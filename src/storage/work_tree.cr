@@ -42,8 +42,8 @@ module Fluence
       dir = abs(prefix)
       return [] of String unless ::Dir.exists? dir
       ::Dir.glob(::File.join(dir, "**", "*"))
-        .select { |f| ::File.file? f }
-        .map { |f| f.lchop(@root).lchop("/") }
+        .select { |file| ::File.file? file }
+        .map(&.lchop(@root).lchop("/"))
         .sort!
     end
 
@@ -53,7 +53,7 @@ module Fluence
         ::Dir.mkdir_p ::File.dirname(file)
         case content
         in String then ::File.write file, content
-        in IO     then ::File.open(file, "w") { |f| IO.copy content, f }
+        in IO     then ::File.open(file, "w") { |io| IO.copy content, io }
         end
         commit [path], user, message
       end

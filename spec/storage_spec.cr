@@ -24,7 +24,7 @@ end
 
 describe Fluence::Storage do
   it "performs the full content lifecycle on each backend" do
-    with_each_storage do |storage, kind|
+    with_each_storage do |storage, _|
       storage.exists?("pages/home.md").should be_false
       storage.list("pages").should be_empty
       storage.size("pages/home.md").should be_nil
@@ -59,7 +59,7 @@ describe Fluence::Storage do
   end
 
   it "records commits attributed to the acting user" do
-    with_each_storage do |storage, kind|
+    with_each_storage do |storage, _|
       storage.write "pages/a.md", "# A\n", SPEC_USER, "create a"
       storage.write "pages/a.md", "# A, edited\n", SPEC_USER, "update a"
       log = git_log(storage)
@@ -70,8 +70,8 @@ describe Fluence::Storage do
   end
 
   it "stores binary content byte-for-byte" do
-    with_each_storage do |storage, kind|
-      bytes = Bytes.new(256) { |i| i.to_u8 }
+    with_each_storage do |storage, _|
+      bytes = Bytes.new(256, &.to_u8)
       storage.write "media/p/file.bin", IO::Memory.new(bytes), SPEC_USER, "upload file.bin"
       storage.read("media/p/file.bin").to_slice.should eq bytes
       storage.size("media/p/file.bin").should eq 256
@@ -79,7 +79,7 @@ describe Fluence::Storage do
   end
 
   it "does not create a commit for a no-op write" do
-    with_each_storage do |storage, kind|
+    with_each_storage do |storage, _|
       storage.write "pages/a.md", "same\n", SPEC_USER, "create a"
       storage.write "pages/a.md", "same\n", SPEC_USER, "identical write"
       git_log(storage).lines.size.should eq 1
@@ -120,7 +120,7 @@ end
 
 describe Fluence::Storage do
   it "reports history, past content, and diffs on each backend" do
-    with_each_storage do |storage, kind|
+    with_each_storage do |storage, _|
       storage.log("pages/h.md").should be_empty
       storage.write "pages/h.md", "# H\nfirst\n", SPEC_USER, "Create page h\n\nInitial text"
       storage.write "pages/h.md", "# H\nsecond\n", SPEC_USER, "Update page h"
@@ -154,7 +154,7 @@ describe Fluence::Storage do
   end
 
   it "renames several paths in one commit" do
-    with_each_storage do |storage, kind|
+    with_each_storage do |storage, _|
       storage.write "pages/p.md", "# P\n", SPEC_USER, "Create page p"
       storage.write "media/p/a.png", "A", SPEC_USER, "Upload media p/a.png"
       storage.write "media/p/sub/b.txt", "B", SPEC_USER, "Upload media p/sub/b.txt"
@@ -173,7 +173,7 @@ end
 
 describe Fluence::Storage do
   it "reports the path a file had at each commit" do
-    with_each_storage do |storage, kind|
+    with_each_storage do |storage, _|
       storage.write "pages/h.md", "# H\nfirst\n", SPEC_USER, "Create page h"
       storage.rename "pages/h.md", "pages/moved.md", SPEC_USER, "Rename page h -> moved"
 
@@ -184,14 +184,14 @@ describe Fluence::Storage do
   end
 
   it "finds headings of files with non-ASCII names" do
-    with_each_storage do |storage, kind|
+    with_each_storage do |storage, _|
       storage.write "pages/straße-日本.md", "# Unicode Title\n", SPEC_USER, "create"
       storage.headings("pages").should eq({"pages/straße-日本.md" => "Unicode Title"})
     end
   end
 
   it "raises Error404 when renaming or deleting a missing path" do
-    with_each_storage do |storage, kind|
+    with_each_storage do |storage, _|
       expect_raises(Fluence::Error404) { storage.rename "pages/nope.md", "pages/x.md", SPEC_USER, "m" }
       expect_raises(Fluence::Error404) { storage.delete "pages/nope.md", SPEC_USER, "m" }
     end

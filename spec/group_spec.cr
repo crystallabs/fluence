@@ -100,7 +100,7 @@ describe Acl::Group do
       },
       default: Acl::Perm::None
     )
-    g["/"]?.should eq nil
+    g["/"]?.should be_nil
     g["/"].should eq g.default
     # TODO: enable this test after changing the design of operator [] to do not match path
     # g["/public"]?.should eq nil
@@ -109,6 +109,6 @@ describe Acl::Group do
     g["/"] = Acl::Perm::Read
     g["/"]?.should eq Acl::Perm::Read
     g.delete("/")
-    g["/"]?.should eq nil
+    g["/"]?.should be_nil
   end
 end

@@ -181,14 +181,12 @@ class PagesController < ApplicationController
       end
 
       pages.each do |page|
-        begin
-          page.delete current_user if page.exists?
-          flash["success success-#{page.name}"] = "Page '#{page.name}' has been deleted"
-        rescue e
-          flash["danger danger-#{page.name}"] = e.to_s
-          redirect_to page.url
-          return
-        end
+        page.delete current_user if page.exists?
+        flash["success success-#{page.name}"] = "Page '#{page.name}' has been deleted"
+      rescue e
+        flash["danger danger-#{page.name}"] = e.to_s
+        redirect_to page.url
+        return
       end
     end
     redirect_to "#{Fluence::OPTIONS.homepage}"

@@ -57,7 +57,7 @@ class Acl::Group
   # nil when no pattern matches.
   def matching?(path : String) : Acl::Perm?
     founds = @permissions.select { |ppath, _| ppath.acl_match?(path) }
-    return nil if founds.empty?
+    return if founds.empty?
     founds.max_by { |ppath, _| ppath.size }[1]
   end
 

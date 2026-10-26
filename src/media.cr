@@ -44,7 +44,7 @@ class Fluence::Media < Fluence::File
   # ("test/file.png"); nil for paths outside the media subtree, or whose
   # name is not addressable by URL (see `File.canonical_name?`).
   def self.storage_path_to_name(path : String) : String?
-    return nil unless path.starts_with?("media/")
+    return unless path.starts_with?("media/")
     name = path.lchop("media/")
     name if canonical_name?(name)
   end

@@ -40,12 +40,12 @@ class Fluence::Users < Lockable
 
   # save the users into the file
   def save!
-    ::File.write @file, self.to_yaml
+    ::File.write @file, to_yaml
   end
 
   # add a user to the list
   def add(u : User)
-    raise AlreadyExists.new "User #{u.name} already exists" if (@list[u.name]?)
+    raise AlreadyExists.new "User #{u.name} already exists" if @list[u.name]?
     @list[u.name] = u
     self
   end
@@ -59,14 +59,14 @@ class Fluence::Users < Lockable
 
   # Remove a user from the list
   def delete(name : String)
-    raise NotExists.new "User #{name} is not in the list" if (!@list[name]?)
+    raise NotExists.new "User #{name} is not in the list" if !@list[name]?
     @list.delete name
     self
   end
 
   # replace an entry
   def update(name : String, u : User)
-    raise NotExists.new "User #{name} is not in the list" if (!@list[name]?)
+    raise NotExists.new "User #{name} is not in the list" if !@list[name]?
 
     # if the name change
     if name != u.name
@@ -121,12 +121,10 @@ class Fluence::Users < Lockable
   # Returns nil if it fails
   def auth?(name : String, password : String) : User?
     user = find?(name)
-    if user.try do |u|
-         u.password_encrypted.verify password
+    if user.try do |found|
+         found.password_encrypted.verify password
        end
       user
-    else
-      nil
     end
   end
 
@@ -139,12 +137,12 @@ class Fluence::Users < Lockable
   #
   # see `#auth?`
   def auth!(name : String, password : String) : User?
-    self.load!
+    load!
     auth?(name, password)
   end
 
   def auth_token!(name : String, token : String) : User?
-    self.load!
+    load!
     auth_token?(name, token)
   end
 
@@ -152,9 +150,9 @@ class Fluence::Users < Lockable
   #
   # Registers a new user by create a new `User` with `name`, `password` and `groups`
   # and then update the file with the new list of users.
-  def register!(name : String, password : String, groups : Array(String) = %w(user))
+  def register!(name : String, password : String, groups : Array(String) = %w[user])
     user = User.new(name, password, groups).encrypt!
-    self.transaction! do |users|
+    transaction! do |users|
       users.add user
     end
     user

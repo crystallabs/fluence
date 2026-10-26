@@ -44,7 +44,7 @@ class Fluence::Page < Fluence::File
   # ("test/title"); nil for paths that are not wiki pages, or whose name
   # is not addressable by URL (see `File.canonical_name?`).
   def self.storage_path_to_name(path : String) : String?
-    return nil unless path.starts_with?("pages/") && path.ends_with?(".md")
+    return unless path.starts_with?("pages/") && path.ends_with?(".md")
     name = path.lchop("pages/").chomp(".md")
     name if canonical_name?(name)
   end
