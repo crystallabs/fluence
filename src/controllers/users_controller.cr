@@ -22,7 +22,6 @@ class UsersController < ApplicationController
     else
       Fluence::LOGIN_THROTTLE.failure!(address, name)
     end
-    # TODO: make a notification
     if user.nil?
       flash["danger"] = "User or password doesn't match."
       redirect_to "#{Fluence::OPTIONS.users_prefix}/login"
@@ -54,7 +53,6 @@ class UsersController < ApplicationController
   def register_validates
     return unless registration_open!
     acl_permit! :write
-    # TODO: make a notification
     begin
       # The first user to register becomes admin; without that, a fresh
       # install would have no way to ever reach the admin interface.
