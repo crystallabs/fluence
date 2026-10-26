@@ -33,12 +33,25 @@ class AdminController < ApplicationController
   end
 
   # post /admin/users/delete
+  #
+  # The last member of the "admin" group is never deleted: nobody could
+  # reach the admin interface afterwards.
   def user_delete
     acl_permit! :write
     attempt do
       username = params.body["username"]
-      Fluence::USERS.transaction!(&.delete(username))
-      flash["success"] = "The user #{username} has been deleted."
+      deleted = false
+      Fluence::USERS.transaction! do |users|
+        user = users[username]
+        next if user.group?("admin") && users.list.values.count(&.group?("admin")) <= 1
+        users.delete username
+        deleted = true
+      end
+      if deleted
+        flash["success"] = "The user #{username} has been deleted."
+      else
+        flash["danger"] = "The user #{username} is the last administrator and cannot be deleted."
+      end
     end
     redirect_to "#{Fluence::OPTIONS.admin_prefix}/users"
   end

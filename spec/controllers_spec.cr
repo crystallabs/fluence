@@ -961,6 +961,37 @@ describe "admin forms" do
   end
 end
 
+describe "user deletion" do
+  it "keeps at least one admin" do
+    backup = File.read(Fluence::USERS.file)
+    begin
+      Fluence::USERS.transaction!(&.list.clear)
+      admin = SpecClient.new
+      admin.post "/users/register", {"username" => "founder", "password" => "sekrit123"}
+      admin.post "/users/login", {"username" => "founder", "password" => "sekrit123"}
+
+      admin.post "/admin/users/delete", {"username" => "founder"}
+      admin.get("/admin/users").body.should contain "The user founder is the last administrator and cannot be deleted."
+      Fluence::USERS.load!["founder"]?.should_not be_nil
+
+      admin.post "/admin/users/create", {"username" => "deputy", "password" => "sekrit123", "groups" => "user, admin"}
+      admin.post "/admin/users/create", {"username" => "plain", "password" => "sekrit123", "groups" => "user"}
+      admin.post "/admin/users/delete", {"username" => "plain"}
+      Fluence::USERS.load!["plain"]?.should be_nil
+
+      admin.post "/admin/users/delete", {"username" => "deputy"}
+      admin.get("/admin/users").body.should contain "The user deputy has been deleted."
+      Fluence::USERS.load!["deputy"]?.should be_nil
+
+      admin.post "/admin/users/delete", {"username" => "founder"}
+      Fluence::USERS.load!["founder"]?.should_not be_nil
+    ensure
+      File.write(Fluence::USERS.file, backup)
+      Fluence::USERS.load!
+    end
+  end
+end
+
 describe "response headers" do
   it "forbids framing" do
     with_each_storage do |_, _|
