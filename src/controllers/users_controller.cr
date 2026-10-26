@@ -70,7 +70,7 @@ class UsersController < ApplicationController
     return unless signed_in!
     acl_permit! :read
     name = current_user.name
-    Fluence::USERS.transaction!(read: true) { |users| users[name].settings.update! params.body }
+    Fluence::USERS.transaction! { |users| users[name].settings.update! params.body }
     flash["success"] = "Your settings have been saved."
     redirect_to "#{Fluence::OPTIONS.users_prefix}/settings"
   end

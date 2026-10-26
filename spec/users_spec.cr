@@ -47,6 +47,21 @@ describe Fluence::Users do
     reloaded["alice"]?.should_not be_nil
     reloaded["bob"]?.should be_nil
   end
+
+  it "reloads the file before every transaction" do
+    file = File.tempname("fluence-spec-users")
+    users = Fluence::Users.new file
+    users.transaction! &.add(Fluence::User.new("alice", "pw"))
+
+    # A hand edit made behind the back of the in-memory copy.
+    other = Fluence::Users.new(file).load!
+    other.add Fluence::User.new("bob", "pw")
+    other.save!
+
+    users.transaction! &.add(Fluence::User.new("carol", "pw"))
+    reloaded = Fluence::Users.new(file).load!
+    reloaded.list.keys.should eq %w[alice bob carol]
+  end
 end
 
 describe Fluence::User do

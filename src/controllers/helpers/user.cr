@@ -1,7 +1,7 @@
 module Fluence::Helpers::User
   # The username+token are set into the cookies in order to allow future auto-login
   def set_login_cookies_for(username)
-    Fluence::USERS.transaction!(read: true) { |users| users[username].generate_new_token! }
+    Fluence::USERS.transaction!(&.[username].generate_new_token!)
     token = Fluence::USERS[username].token.to_s
     set_cookie name: "user.name", value: username, expires: 14.days.from_now
     set_cookie name: "user.token", value: token, expires: 14.days.from_now

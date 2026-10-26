@@ -59,6 +59,8 @@ When Fluence starts, by default it will create two subdirectories in the current
 1. `data/` for actual Wiki pages and their attached media files — a Git repository (bare by default; see storage modes above), with pages under `pages/` and attachments under `media/` in the repository tree
 1. `meta/` for metadata, which currently consists of files `users`, `acl`, and `secret` (the auto-generated session-signing secret; sessions survive restarts because of it, and the `WIKI_SECRET` environment variable overrides it). When serving Fluence over HTTPS, also set `FLUENCE_SECURE_COOKIES` (to any value) so cookies are marked Secure.
 
+`meta/users` and `meta/acl` may be edited by hand while Fluence runs: both files are re-read before every change made through the wiki, so such edits are never overwritten by the copy Fluence holds in memory.
+
 There are no files or directories required to pre-exist for Fluence to work. The locations can be overridden with the environment variables `FLUENCE_DATADIR` and `FLUENCE_METADIR`.
 
 Static assets (stylesheets, scripts, logo) are served from the `public/` directory of the source tree Fluence was compiled from, so the binary can be started from any working directory. If that tree is not available at runtime, point `FLUENCE_PUBLICDIR` at a copy of `public/`.

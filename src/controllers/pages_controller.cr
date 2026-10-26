@@ -75,7 +75,6 @@ class PagesController < ApplicationController
     body = exists ? (page.read rescue "") : ""
     body_html = Fluence::Markdown.to_html body
     last_commit = exists ? page.history(1).first? : nil
-    Fluence::ACL.load!
     writable = Fluence::ACL.permitted? current_user, page.url, Acl::Perm::Write
     body = page.default_content if writable && !exists
     open_in_edit = open_in_edit? page, exists
