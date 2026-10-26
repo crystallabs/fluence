@@ -831,3 +831,13 @@ describe "admin forms" do
     end
   end
 end
+
+describe "response headers" do
+  it "forbids framing" do
+    with_each_storage do |_, _|
+      response = SpecClient.new.get "/users/login"
+      response.headers["X-Frame-Options"].should eq "DENY"
+      response.headers["Content-Security-Policy"].should eq "frame-ancestors 'none'"
+    end
+  end
+end

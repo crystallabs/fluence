@@ -24,3 +24,10 @@ Kemal::Session.config do |config|
   # Used by kemal-session
   config.gc_interval = 2.minutes # 2 minutes
 end
+
+# Nothing in Fluence is meant to be embedded in another site; refusing to
+# be framed prevents clickjacking of the editor and the admin pages.
+before_all do |env|
+  env.response.headers["X-Frame-Options"] = "DENY"
+  env.response.headers["Content-Security-Policy"] = "frame-ancestors 'none'"
+end
