@@ -83,6 +83,59 @@ describe "remember-me tokens over HTTP" do
   end
 end
 
+describe "password change" do
+  it "requires the current password and keeps only this browser remembered" do
+    client = SpecClient.login "changer", "sekrit123"
+    client.post "/users/settings", {"theme" => "dark"}
+    other = SpecClient.new
+    other.post "/users/login", {"username" => "changer", "password" => "sekrit123"}
+    client.get("/users/settings").body.should contain %(action="/users/password")
+
+    client.post "/users/password", {"current_password" => "wrong", "new_password" => "fresh123", "password_confirmation" => "fresh123"}
+    client.get("/users/settings").body.should contain "The current password is not correct."
+    client.post "/users/password", {"current_password" => "sekrit123", "new_password" => "fresh123", "password_confirmation" => "fresh124"}
+    client.get("/users/settings").body.should contain "do not match"
+    Fluence::USERS.auth!("changer", "sekrit123").should_not be_nil
+
+    response = client.post "/users/password", {"current_password" => "sekrit123", "new_password" => "fresh123", "password_confirmation" => "fresh123"}
+    response.headers["Location"].should eq "/users/settings"
+    client.get("/users/settings").body.should contain "Your password has been changed."
+
+    user = Fluence::USERS.load!["changer"]
+    Fluence::USERS.auth?("changer", "sekrit123").should be_nil
+    Fluence::USERS.auth?("changer", "fresh123").should_not be_nil
+    user.settings.theme.should eq "dark"
+    user.groups.should eq %w[user]
+    user.tokens.should eq [client.jar["user.token"].value]
+
+    other.jar.delete "session_id"
+    other.get("/users/settings").headers["Location"].should eq "/users/login"
+  end
+
+  it "can be reset by an admin" do
+    Fluence::USERS.transaction! do |users|
+      users.add Fluence::User.new("pw-admin", "sekrit123", %w[user admin]).encrypt! unless users["pw-admin"]?
+    end
+    target = SpecClient.login "pw-target", "sekrit123"
+    admin = SpecClient.new
+    admin.post "/users/login", {"username" => "pw-admin", "password" => "sekrit123"}
+    admin.get("/admin/users").body.should contain %(action="/admin/users/password")
+
+    response = admin.post "/admin/users/password", {"username" => "pw-target", "password" => "reset123"}
+    response.headers["Location"].should eq "/admin/users"
+    admin.get("/admin/users").body.should contain "The password of user pw-target has been reset."
+    Fluence::USERS.load!.auth?("pw-target", "reset123").should_not be_nil
+    Fluence::USERS["pw-target"].tokens.should be_empty
+    target.jar.delete "session_id"
+    target.get("/users/settings").headers["Location"].should eq "/users/login"
+
+    # Regular users may not reset passwords.
+    target.post "/users/login", {"username" => "pw-target", "password" => "reset123"}
+    target.post "/admin/users/password", {"username" => "pw-admin", "password" => "x"}
+    Fluence::USERS.load!.auth?("pw-admin", "sekrit123").should_not be_nil
+  end
+end
+
 describe "rename destination check over HTTP" do
   it "reports an invalid destination name instead of failing" do
     with_each_storage do |_, _|

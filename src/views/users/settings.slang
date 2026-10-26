@@ -37,3 +37,20 @@
                   option value=value selected=chosen = label
           .mb-3.pt-2
             input.form-control.btn.btn-md.btn-success name="save" type="submit" value="Save"
+      h4.pt-3 Change password
+      form#password method="post" action="#{Fluence::OPTIONS.users_prefix}/password"
+        fieldset
+          .mb-3.row
+            label.col-5.col-form-label for="input_current_password" Current password
+            .col-7
+              input.form-control id="input_current_password" name="current_password" type="password" required="required" autocomplete="current-password"
+          .mb-3.row
+            label.col-5.col-form-label for="input_new_password" New password
+            .col-7
+              input.form-control id="input_new_password" name="new_password" type="password" required="required" autocomplete="new-password"
+          .mb-3.row
+            label.col-5.col-form-label for="input_password_confirmation" Confirm new password
+            .col-7
+              input.form-control id="input_password_confirmation" name="password_confirmation" type="password" required="required" autocomplete="new-password"
+          .mb-3.pt-2
+            button.btn.btn-success.w-100 name="change_password" type="submit" Change password

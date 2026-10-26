@@ -21,6 +21,17 @@ class AdminController < ApplicationController
     redirect_to "#{Fluence::OPTIONS.admin_prefix}/users"
   end
 
+  # post /admin/users/password
+  def user_password
+    acl_permit! :write
+    attempt do
+      username = params.body["username"]
+      Fluence::USERS.transaction! { |users| users[username].change_password! params.body["password"] }
+      flash["success"] = "The password of user #{username} has been reset."
+    end
+    redirect_to "#{Fluence::OPTIONS.admin_prefix}/users"
+  end
+
   # post /admin/users/delete
   def user_delete
     acl_permit! :write

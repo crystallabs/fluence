@@ -84,6 +84,16 @@ class Fluence::User
     @tokens.clear
   end
 
+  # Sets a new (plain text) password, stored encrypted, and clears the
+  # remember-me tokens, so cookies issued under the old one stop working.
+  def change_password!(password : String) : self
+    raise Invalid.new "The password cannot be empty" if password.empty?
+    @password = password
+    encrypt!
+    clear_tokens!
+    self
+  end
+
   #########################
   # Implement Acl::Entity #
   #########################

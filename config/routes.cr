@@ -40,10 +40,12 @@ Router.post "#{Fluence::OPTIONS.users_prefix}/register", UsersController, :regis
 Router.get "#{Fluence::OPTIONS.users_prefix}/logout", UsersController, :logout
 Router.get "#{Fluence::OPTIONS.users_prefix}/settings", UsersController, :settings
 Router.post "#{Fluence::OPTIONS.users_prefix}/settings", UsersController, :settings_update
+Router.post "#{Fluence::OPTIONS.users_prefix}/password", UsersController, :password_update
 
 Router.get "#{Fluence::OPTIONS.admin_prefix}#{Fluence::OPTIONS.users_prefix}", AdminController, :users_show
 Router.post "#{Fluence::OPTIONS.admin_prefix}#{Fluence::OPTIONS.users_prefix}/create", AdminController, :user_create
 Router.post "#{Fluence::OPTIONS.admin_prefix}#{Fluence::OPTIONS.users_prefix}/delete", AdminController, :user_delete
+Router.post "#{Fluence::OPTIONS.admin_prefix}#{Fluence::OPTIONS.users_prefix}/password", AdminController, :user_password
 
 Router.get "#{Fluence::OPTIONS.admin_prefix}/acls", AdminController, :acls_show
 Router.post "#{Fluence::OPTIONS.admin_prefix}/acls/update", AdminController, :acl_update

@@ -76,6 +76,29 @@ class UsersController < ApplicationController
     redirect_to "#{Fluence::OPTIONS.users_prefix}/settings"
   end
 
+  # post /users/password
+  def password_update
+    return unless signed_in!
+    acl_permit! :read
+    name = current_user.name
+    password = params.body["new_password"]?.to_s
+    if Fluence::USERS.auth!(name, params.body["current_password"]?.to_s).nil?
+      flash["danger"] = "The current password is not correct."
+    elsif password.empty?
+      flash["danger"] = "The new password cannot be empty."
+    elsif password != params.body["password_confirmation"]?
+      flash["danger"] = "The new password and its confirmation do not match."
+    else
+      # Cookies issued under the old password stop working everywhere;
+      # this browser gets a fresh one.
+      token = ""
+      Fluence::USERS.transaction! { |users| token = users[name].change_password!(password).issue_token! }
+      write_login_cookies name, token
+      flash["success"] = "Your password has been changed. Other browsers will have to log in again."
+    end
+    redirect_to "#{Fluence::OPTIONS.users_prefix}/settings"
+  end
+
   # False, with a redirect to the login page queued, unless a user is
   # logged in.
   private def signed_in!

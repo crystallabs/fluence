@@ -10,6 +10,11 @@ module Fluence::Helpers::User
       replacing.try { |old| user.revoke_token old }
       token = user.issue_token!
     end
+    write_login_cookies username, token
+  end
+
+  # Sets the remember-me cookies of this browser.
+  def write_login_cookies(username : String, token : String)
     set_cookie name: "user.name", value: username, expires: 14.days.from_now
     set_cookie name: "user.token", value: token, expires: 14.days.from_now
   end

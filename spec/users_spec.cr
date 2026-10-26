@@ -102,6 +102,17 @@ describe Fluence::Users do
     user.clear_tokens!
     user.tokens.should be_empty
   end
+
+  it "changes the password, clearing the remember-me tokens" do
+    user = Fluence::User.new("alice", "old", %w[user admin]).encrypt!
+    user.issue_token!
+    user.change_password! "new"
+    user.password_encrypted.verify("new").should be_true
+    user.password_encrypted.verify("old").should be_false
+    user.tokens.should be_empty
+    user.groups.should eq %w[user admin]
+    expect_raises(Fluence::User::Invalid) { user.change_password! "" }
+  end
 end
 
 describe Fluence::User do

@@ -85,7 +85,7 @@ Besides its name, every page can be reached through its title at `/titles/<slug>
 
 ## User settings
 
-Logged-in users have a settings page (their name in the navigation bar, or `/users/settings`) with preferences that are stored in `meta/users` and apply from any browser: whether pages open in edit or view mode (or follow the site's `open_*_in_edit` options), whether the editor starts in side-by-side preview and/or fullscreen, the delay before the editor stores a draft in the browser (0 disables drafts), and the color scheme (light, dark, or the browser's preference).
+Logged-in users have a settings page (their name in the navigation bar, or `/users/settings`) with preferences that are stored in `meta/users` and apply from any browser: whether pages open in edit or view mode (or follow the site's `open_*_in_edit` options), whether the editor starts in side-by-side preview and/or fullscreen, the delay before the editor stores a draft in the browser (0 disables drafts), and the color scheme (light, dark, or the browser's preference). The same page has a form to change the password; it asks for the current password, and logs the user out of the other browsers it was remembered in.
 
 ## Git access over HTTP
 
@@ -114,6 +114,6 @@ The Fluence Wiki is usable. On-disk format for data won't change so you will be 
 
 Important things to have in mind currently:
 
-On a fresh install, the first user to register becomes admin (member of the `admin` group, which can manage users and ACLs); everyone who registers later is a regular user who can read and edit pages and media but not administer the wiki. Registration is open by default and doesn't require any confirmation; set `FLUENCE_REGISTRATION=closed` to disable self-registration, after which only admins can add accounts through the admin interface. The permission scheme can be further configured via both `meta/acl` and the GUI.
+On a fresh install, the first user to register becomes admin (member of the `admin` group, which can manage users and ACLs); everyone who registers later is a regular user who can read and edit pages and media but not administer the wiki. Registration is open by default and doesn't require any confirmation; set `FLUENCE_REGISTRATION=closed` to disable self-registration, after which only admins can add accounts through the admin interface. Admins can also reset the password of any user there, which logs that user out of all remembered browsers. The permission scheme can be further configured via both `meta/acl` and the GUI.
 
 Things we have in mind or are working on are listed in [project issues](https://github.com/crystallabs/fluence/issues). Your comments will help us decide on priorities.
